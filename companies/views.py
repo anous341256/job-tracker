@@ -2,7 +2,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 from django.db.models import Count, Q
 from django.http import Http404
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView, DetailView, ListView, UpdateView, View
@@ -32,6 +32,8 @@ class CompanyListView(OwnedQuerysetMixin, ListView):
             if value := self.request.GET.get(key):
                 qs = qs.filter(**{key: value})
         return qs
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), 'statuses': Company.Status.choices, 'priorities': Company.Priority.choices, 'industries': Company.objects.filter(user=self.request.user).exclude(industry='').values_list('industry', flat=True).distinct().order_by('industry')}
 
 
 class CompanyDetailView(OwnedQuerysetMixin, DetailView):
@@ -83,7 +85,41 @@ class JobListView(LoginRequiredMixin, ListView):
         for key in ('company', 'status', 'work_mode'):
             if value := self.request.GET.get(key):
                 qs = qs.filter(**{f'{key}_id' if key == 'company' else key: value})
+        deadline = self.request.GET.get('deadline')
+        today = timezone.localdate()
+        if deadline == 'upcoming': qs = qs.filter(application_deadline__gte=today)
+        elif deadline == 'overdue': qs = qs.filter(application_deadline__lt=today)
+        elif deadline == 'none': qs = qs.filter(application_deadline__isnull=True)
         return qs
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), 'companies': Company.objects.filter(user=self.request.user, archived_at__isnull=True).order_by('name'), 'statuses': JobPosition.Status.choices, 'work_modes': JobPosition.WorkMode.choices}
+
+
+class CompanyDeleteView(LoginRequiredMixin, View):
+    def dispatch(self, request, pk, *args, **kwargs):
+        self.object = Company.objects.filter(pk=pk, user=request.user).first()
+        if not self.object: raise Http404
+        return super().dispatch(request, pk, *args, **kwargs)
+    def get(self, request, pk): return render(request, 'generic/confirm_delete.html', {'object': self.object, 'cancel_url': reverse_lazy('companies:detail', kwargs={'pk': pk}), 'archive_url': reverse_lazy('companies:archive', kwargs={'pk': pk}), 'kind': '公司'})
+    def post(self, request, pk):
+        has_related = self.object.job_positions.exists() or self.object.contacts.exists() or self.object.synced_emails.exists() or self.object.communications.exists() or self.object.documents.exists()
+        if has_related:
+            messages.error(request, '该公司已有职位、联系人、邮件或其他业务数据，不能删除，请改用归档。')
+            return redirect('companies:detail', pk=pk)
+        self.object.delete(); messages.success(request, '公司已删除。'); return redirect('companies:list')
+
+
+class JobDeleteView(LoginRequiredMixin, View):
+    def dispatch(self, request, pk, *args, **kwargs):
+        self.object = JobPosition.objects.filter(pk=pk, company__user=request.user).first()
+        if not self.object: raise Http404
+        return super().dispatch(request, pk, *args, **kwargs)
+    def get(self, request, pk): return render(request, 'generic/confirm_delete.html', {'object': self.object, 'cancel_url': reverse_lazy('companies:job-detail', kwargs={'pk': pk}), 'kind': '职位'})
+    def post(self, request, pk):
+        if self.object.applications.exists():
+            messages.error(request, '该职位已有投递记录，不能删除；请将职位状态改为已关闭。')
+            return redirect('companies:job-detail', pk=pk)
+        self.object.delete(); messages.success(request, '职位已删除。'); return redirect('companies:job-list')
 
 
 class JobDetailView(LoginRequiredMixin, DetailView):
@@ -100,8 +136,20 @@ class JobCreateView(LoginRequiredMixin, CreateView):
     def get_form_kwargs(self):
         return {**super().get_form_kwargs(), 'user': self.request.user}
 
+    def get_initial(self):
+        initial = super().get_initial()
+        company_id = self.request.GET.get('company')
+        if company_id and Company.objects.filter(pk=company_id, user=self.request.user).exists():
+            initial['company'] = company_id
+        return initial
+
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), 'form_title': '添加职位', 'form_intro': '先填写公司、职位名称和职位类别，其余信息可以稍后补充。'}
+
 
 class JobUpdateView(JobCreateView, UpdateView):
     model = JobPosition
     def get_queryset(self):
         return JobPosition.objects.filter(company__user=self.request.user)
+    def get_context_data(self, **kwargs):
+        return {**super().get_context_data(**kwargs), 'form_title': '编辑职位'}

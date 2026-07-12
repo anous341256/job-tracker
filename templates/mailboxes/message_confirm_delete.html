@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mx-auto" style="max-width: 680px"><div class="card-body p-4">
+  <h1 class="h3">删除数据库邮件副本</h1>
+  <p>邮件：<strong>{{ email.subject|default:'（无主题）' }}</strong></p>
+  <div class="alert alert-warning">此操作只删除 Job Tracker 中保存的副本，不会删除或修改 Outlook 原邮件。删除后45天内不会被重新同步。</div>
+  <form method="post">{% csrf_token %}<input type="hidden" name="confirm" value="yes"><button class="btn btn-danger">确认删除副本</button> <a class="btn btn-outline-secondary" href="{% url 'mailboxes:message-detail' email.pk %}">取消</a></form>
+</div></div>
+{% endblock %}

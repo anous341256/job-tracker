@@ -61,6 +61,15 @@ class Company(models.Model):
 
 
 class JobPosition(models.Model):
+    class Category(models.TextChoices):
+        TECHNICAL = 'technical', _('技术职')
+        GENERAL = 'general', _('综合职')
+        CONSULTING = 'consulting', _('咨询职')
+        SALES = 'sales', _('营业职')
+        PLANNING = 'planning', _('企划／运营职')
+        DESIGN = 'design', _('设计职')
+        OTHER = 'other', _('其他')
+
     class Status(models.TextChoices):
         DRAFT = 'draft', _('待整理')
         OPEN = 'open', _('招聘中')
@@ -95,6 +104,13 @@ class JobPosition(models.Model):
         verbose_name=_('公司'),
     )
     title = models.CharField(_('职位名称'), max_length=200)
+    category = models.CharField(
+        _('职位类别'), max_length=20, choices=Category.choices, default=Category.TECHNICAL
+    )
+    category_other = models.CharField(
+        _('其他职位类别'), max_length=100, blank=True,
+        help_text=_('选择“其他”时填写。'),
+    )
     department = models.CharField(_('部门'), max_length=150, blank=True)
     status = models.CharField(
         _('状态'), max_length=10, choices=Status.choices, default=Status.OPEN

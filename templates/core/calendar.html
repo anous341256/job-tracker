@@ -1,1 +1,10 @@
-{% extends 'base.html' %}{% block content %}<h1>日历</h1><div id="calendar"></div>{% endblock %}{% block scripts %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script><script>document.addEventListener('DOMContentLoaded',()=>new FullCalendar.Calendar(document.getElementById('calendar'),{initialView:'dayGridMonth',locale:'zh-cn',events:'{% url "core:calendar-events" %}'}).render())</script>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><span class="eyebrow">SCHEDULE</span><h1>日历</h1></div><a class="btn btn-outline-primary" href="{% url 'interviews' %}">面试列表</a></div>
+<div class="card p-3"><div id="calendar"></div></div>
+<div class="d-flex gap-3 mt-3 small"><span><i class="calendar-dot interview"></i>面试</span><span><i class="calendar-dot deadline"></i>职位截止</span><span><i class="calendar-dot followup"></i>投递跟进</span></div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<script>document.addEventListener('DOMContentLoaded',()=>{new FullCalendar.Calendar(document.getElementById('calendar'),{initialView:'dayGridMonth',locale:'zh-cn',firstDay:1,height:'auto',events:'{% url "core:calendar-events" %}',eventTimeFormat:{hour:'2-digit',minute:'2-digit',hour12:false}}).render()})</script>
+{% endblock %}

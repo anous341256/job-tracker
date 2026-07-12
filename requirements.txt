@@ -27,6 +27,7 @@ python-crontab==3.3.0
 python-dateutil==2.9.0.post0
 redis==6.4.0
 requests==2.34.2
+pywin32==311; sys_platform == "win32"
 six==1.17.0
 sqlparse==0.5.5
 tzdata==2026.3
