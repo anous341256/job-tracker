@@ -1,1 +1,47 @@
-{% extends 'base.html' %}{% block content %}<h1>同步邮件</h1>{% for x in emails %}<div class="card p-3 mb-2"><strong>{{ x.subject }}</strong><div>{{ x.sender }} · {{ x.received_at }}</div><p>{{ x.body_text|truncatechars:250 }}</p><div>{% if x.company %}<span class="badge text-bg-secondary">{{ x.company }}</span>{% endif %} <a href="{% url 'mailboxes:link-message' x.pk %}">关联业务数据</a></div></div>{% empty %}<p>暂无同步邮件。</p>{% endfor %}{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center"><h1>已同步邮件</h1><a class="btn btn-outline-primary" href="{% url 'mailboxes:accounts' %}">邮箱账户与同步</a></div>
+<form class="row g-2 my-3" method="get">
+  <div class="col-lg-4"><input class="form-control" name="q" value="{{ request.GET.q }}" placeholder="搜索主题、发件人或正文"></div>
+  <div class="col-lg-2"><select class="form-select" name="company"><option value="">全部公司</option>{% for company in companies %}<option value="{{ company.pk }}" {% if request.GET.company == company.pk|stringformat:'s' %}selected{% endif %}>{{ company.name }}</option>{% endfor %}</select></div>
+  <div class="col-lg-2"><select class="form-select" name="linked"><option value="">全部关联状态</option><option value="yes" {% if request.GET.linked == 'yes' %}selected{% endif %}>已关联</option><option value="no" {% if request.GET.linked == 'no' %}selected{% endif %}>未关联</option></select></div>
+  <div class="col"><input type="date" class="form-control" name="date_from" value="{{ request.GET.date_from }}" title="开始日期"></div>
+  <div class="col"><input type="date" class="form-control" name="date_to" value="{{ request.GET.date_to }}" title="结束日期"></div>
+  <div class="col-auto"><button class="btn btn-primary">搜索</button> <a class="btn btn-outline-secondary" href="{% url 'mailboxes:messages' %}">重置</a></div>
+</form>
+
+<form method="post" action="{% url 'mailboxes:messages-bulk-delete' %}" onsubmit="return confirm('只会删除 Job Tracker 数据库副本，不会删除 Outlook 原邮件。确定继续吗？')">
+{% csrf_token %}<input type="hidden" name="confirm" value="yes">
+<div class="d-flex justify-content-between mb-2"><span class="text-muted">每页20封</span><button class="btn btn-sm btn-outline-danger">删除所选数据库副本</button></div>
+{% for x in emails %}
+<div class="card p-3 mb-2">
+  <div class="d-flex gap-3">
+    <input class="form-check-input mt-1" type="checkbox" name="selected" value="{{ x.pk }}" aria-label="选择邮件">
+    <div class="flex-grow-1">
+      <div class="d-flex justify-content-between gap-3"><strong><a href="{% url 'mailboxes:message-detail' x.pk %}">{{ x.subject|default:'（无主题）' }}</a></strong><span class="small text-muted text-nowrap">{{ x.received_at }}</span></div>
+      <div class="small text-muted">{{ x.sender }} · {% if x.is_read %}已读{% else %}<strong>未读</strong>{% endif %}{% if x.has_attachments %} · 有附件{% endif %}</div>
+      <p class="mb-2">{{ x.body_text|truncatechars:220 }}</p>
+      <div class="row g-2 align-items-center">
+        <div class="col-md-6">
+          <div class="d-flex gap-2 align-items-center">
+            {% if x.company %}<span class="badge text-bg-secondary">{{ x.company }}</span>{% else %}<span class="text-muted small">未关联公司</span>{% endif %}
+            <a href="{% url 'mailboxes:link-message' x.pk %}">完整关联</a>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group input-group-sm">
+            <select class="form-select" name="company_{{ x.pk }}" disabled><option>{{ x.company|default:'快捷关联公司' }}</option></select>
+            <button type="submit" class="btn btn-outline-primary" formaction="{% url 'mailboxes:quick-link-company' x.pk %}" formmethod="post" name="company" value="">清除关联</button>
+          </div>
+          <div class="mt-1 d-flex flex-wrap gap-1">
+            {% for company in companies %}<button type="submit" class="btn btn-sm btn-light" formaction="{% url 'mailboxes:quick-link-company' x.pk %}" formmethod="post" name="company" value="{{ company.pk }}">{{ company.name }}</button>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% empty %}<p class="empty-state">没有符合条件的邮件。</p>{% endfor %}
+</form>
+{% include 'generic/pagination.html' %}
+{% endblock %}

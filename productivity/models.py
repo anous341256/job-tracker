@@ -81,6 +81,9 @@ class Document(models.Model):
             self.size = self.file.size
         super().save(*args, **kwargs)
 
+    def __str__(self):
+        return self.original_name or Path(self.file.name).name
+
 
 class Communication(models.Model):
     class Channel(models.TextChoices):
@@ -108,6 +111,9 @@ class Communication(models.Model):
 
     class Meta:
         ordering = ('-occurred_at',)
+
+    def __str__(self):
+        return self.subject or f'{self.get_channel_display()} · {self.occurred_at:%Y-%m-%d}'
 
 
 class Tag(models.Model):

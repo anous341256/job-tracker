@@ -8,3 +8,4 @@ redis>=6,<7
 django-celery-beat>=2.8,<3
 cryptography>=45,<47
 requests>=2.32,<3
+pywin32>=311,<312; sys_platform == "win32"

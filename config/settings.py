@@ -185,7 +185,7 @@ CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', default=DEBUG)
 CELERY_BEAT_SCHEDULE = {
     'build-reminders-every-hour': {'task': 'core.tasks.build_reminders', 'schedule': 3600.0},
     'send-due-reminders-every-five-minutes': {'task': 'core.tasks.send_due_reminders', 'schedule': 300.0},
-    'sync-email-every-fifteen-minutes': {'task': 'mailboxes.tasks.sync_all_accounts', 'schedule': 900.0},
+    'cleanup-email-storage-daily': {'task': 'mailboxes.tasks.cleanup_email_storage', 'schedule': 86400.0},
 }
 
 if not DEBUG:

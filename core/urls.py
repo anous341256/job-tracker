@@ -7,4 +7,5 @@ urlpatterns = [
     path('calendar/events/', views.calendar_events, name='calendar-events'),
     path('notifications/', views.notifications, name='notifications'),
     path('notifications/<int:pk>/read/', views.notification_read, name='notification-read'),
+    path('notifications/read-all/', views.notifications_read_all, name='notifications-read-all'),
 ]

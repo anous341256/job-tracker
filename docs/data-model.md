@@ -40,7 +40,8 @@
 ### JobPosition
 
 - 归属：`company`
-- 核心字段：`title`、`department`、`status`、`description`、`source_url`、`application_deadline`、`published_at`、`location`、`work_mode`、`employment_type`、薪资结构字段、`requirements`、`benefits`、`notes`
+- 核心字段：`title`、`category`、`category_other`、`department`、`status`、`description`、`source_url`、`application_deadline`、`published_at`、`location`、`work_mode`、`employment_type`、薪资结构字段、`requirements`、`benefits`、`notes`
+- 职位类别：`technical`、`general`、`consulting`、`sales`、`planning`、`design`、`other`；选择 `other` 时必须填写 `category_other`。
 - 状态：`draft`、`open`、`closed`、`expired`、`filled`、`unknown`
 - 办公方式：`onsite`、`hybrid`、`remote`、`unknown`
 - 薪资拆为 `salary_min`、`salary_max`、`salary_currency`、`salary_period`，不保存为单一展示字符串。
@@ -82,4 +83,6 @@
 - 已产生投递的职位应阻止直接删除。
 - 删除投递时，状态历史和面试记录可随之级联删除。
 - 用户删除时，其私人业务数据随之删除；执行前必须提供明确确认和数据导出提示。
+# Email retention
 
+`SyncedEmail` stores a bounded local copy for search and business linking. Messages are unique per mailbox and provider message ID. Linked messages are retained; unlinked messages expire after 180 days and are capped at 1,000 per mailbox. `DeletedEmailMarker` stores only a SHA-256 message identifier and a 45-day expiry to prevent manually deleted copies from immediately returning during synchronization.

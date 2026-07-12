@@ -1,6 +1,10 @@
 import base64
 import hashlib
 import json
+import sys
+import mimetypes
+import tempfile
+from pathlib import Path
 from datetime import timezone as datetime_timezone
 from email.message import EmailMessage
 
@@ -8,10 +12,12 @@ import requests
 from cryptography.fernet import Fernet
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.core.files import File
 from django.utils import timezone
 
 from productivity.models import Communication, Contact
-from .models import EmailAccount, SyncedEmail
+from productivity.models import Document
+from .models import DeletedEmailMarker, EmailAccount, SyncedEmail
 
 
 def _fernet():
@@ -69,7 +75,36 @@ def _guess_links(account, sender, subject):
     return None, None, None
 
 
+def message_hash(provider_message_id):
+    return hashlib.sha256(provider_message_id.encode('utf-8')).hexdigest()
+
+
+def mark_and_delete_email(email):
+    DeletedEmailMarker.objects.update_or_create(
+        account=email.account,
+        message_hash=message_hash(email.provider_message_id),
+        defaults={'expires_at': timezone.now() + timezone.timedelta(days=45)},
+    )
+    email.delete()
+
+
+def cleanup_stored_emails():
+    """Bound local storage while preserving all manually linked messages."""
+    now = timezone.now()
+    DeletedEmailMarker.objects.filter(expires_at__lte=now).delete()
+    unlinked = SyncedEmail.objects.filter(company__isnull=True, application__isnull=True, contact__isnull=True)
+    unlinked.filter(received_at__lt=now - timezone.timedelta(days=180)).delete()
+    for account_id in EmailAccount.objects.values_list('id', flat=True):
+        excess_ids = list(
+            unlinked.filter(account_id=account_id).order_by('-received_at').values_list('id', flat=True)[1000:]
+        )
+        if excess_ids:
+            SyncedEmail.objects.filter(id__in=excess_ids).delete()
+
+
 def sync_account(account):
+    if account.provider == EmailAccount.Provider.OUTLOOK_LOCAL:
+        return sync_local_outlook(account)
     token = refresh_access_token(account)
     headers = {'Authorization': f'Bearer {token}'}
     if account.provider == 'gmail':
@@ -88,9 +123,164 @@ def sync_account(account):
             company, contact, application = _guess_links(account, sender, data.get('subject', ''))
             SyncedEmail.objects.update_or_create(account=account, provider_message_id=data['id'], defaults={'thread_id': data.get('conversationId', ''), 'direction': SyncedEmail.Direction.INBOUND, 'sender': sender, 'recipients': [x['emailAddress']['address'] for x in data.get('toRecipients', [])], 'subject': data.get('subject', ''), 'body_text': data.get('bodyPreview', ''), 'received_at': timezone.datetime.fromisoformat(data['receivedDateTime'].replace('Z', '+00:00')), 'company': company, 'contact': contact, 'application': application})
     account.last_synced_at = timezone.now(); account.status = EmailAccount.Status.ACTIVE; account.error_message = ''; account.save(update_fields=('last_synced_at', 'status', 'error_message', 'updated_at'))
+    cleanup_stored_emails()
+
+
+def _local_outlook_namespace():
+    if sys.platform != 'win32':
+        raise RuntimeError('本机 Outlook 同步仅支持 Windows。')
+    try:
+        import pythoncom
+        import win32com.client
+    except ImportError as exc:
+        raise RuntimeError('缺少 pywin32，无法连接本机 Outlook。') from exc
+    pythoncom.CoInitialize()
+    outlook = win32com.client.Dispatch('Outlook.Application')
+    return pythoncom, outlook.GetNamespace('MAPI')
+
+
+def local_outlook_identity():
+    """获取默认 SMTP 地址，不读取任何邮件内容。"""
+    pythoncom, namespace = _local_outlook_namespace()
+    try:
+        for local_account in namespace.Accounts:
+            address = str(getattr(local_account, 'SmtpAddress', '') or '').strip()
+            if '@' in address:
+                return address
+        return 'local-outlook@localhost'
+    finally:
+        pythoncom.CoUninitialize()
+
+
+def _outlook_sender_address(item, fallback):
+    address = str(getattr(item, 'SenderEmailAddress', '') or '').strip()
+    if getattr(item, 'SenderEmailType', '') == 'EX':
+        try:
+            exchange_user = item.Sender.GetExchangeUser()
+            address = str(exchange_user.PrimarySmtpAddress or address)
+        except Exception:
+            pass
+    return address if '@' in address else fallback
+
+
+def sync_local_outlook(account, *, limit=50, days=30):
+    """只读同步经典 Outlook 的近期邮件，不修改邮箱中的任何对象。"""
+    pythoncom, namespace = _local_outlook_namespace()
+    imported = 0
+    cutoff = timezone.now() - timezone.timedelta(days=days)
+    try:
+        folder = namespace.GetDefaultFolder(6)  # 6 = olFolderInbox
+        if account.sync_folder and account.sync_folder.lower() != 'inbox':
+            try:
+                folder = folder.Folders.Item(account.sync_folder)
+            except Exception as exc:
+                raise RuntimeError(f'找不到 Outlook 文件夹：{account.sync_folder}') from exc
+        items = folder.Items
+        items.Sort('[ReceivedTime]', True)
+        scanned = 0
+        for item in items:
+            if scanned >= 250 or imported >= limit:
+                break
+            scanned += 1
+            if getattr(item, 'Class', None) != 43:  # 43 = olMail
+                continue
+            received_at = getattr(item, 'ReceivedTime', None)
+            if not received_at:
+                continue
+            if timezone.is_naive(received_at):
+                received_at = timezone.make_aware(received_at)
+            if received_at < cutoff:
+                break
+            entry_id = str(item.EntryID)
+            if DeletedEmailMarker.objects.filter(account=account, message_hash=message_hash(entry_id), expires_at__gt=timezone.now()).exists():
+                continue
+            sender = _outlook_sender_address(item, account.email_address)
+            subject = str(getattr(item, 'Subject', '') or '')[:500]
+            company, contact, application = _guess_links(account, sender, subject)
+            recipients = []
+            try:
+                recipients = [str(r.Address) for r in item.Recipients if getattr(r, 'Address', None)]
+            except Exception:
+                pass
+            _, created = SyncedEmail.objects.update_or_create(
+                account=account,
+                provider_message_id=entry_id,
+                defaults={
+                    'thread_id': str(getattr(item, 'ConversationID', '') or ''),
+                    'direction': SyncedEmail.Direction.INBOUND,
+                    'sender': sender,
+                    'recipients': recipients,
+                    'subject': subject,
+                    # Outlook Body is plain text. Keep a generous cap so the
+                    # built-in reader is useful without storing unbounded data.
+                    'body_text': str(getattr(item, 'Body', '') or '')[:50000],
+                    'folder_name': account.sync_folder or 'Inbox',
+                    'is_read': not bool(getattr(item, 'UnRead', False)),
+                    'has_attachments': bool(getattr(getattr(item, 'Attachments', None), 'Count', 0)),
+                    'received_at': received_at,
+                    'company': company,
+                    'contact': contact,
+                    'application': application,
+                },
+            )
+            imported += int(created)
+        account.last_synced_at = timezone.now()
+        account.status = EmailAccount.Status.ACTIVE
+        account.error_message = ''
+        account.sync_cursor = timezone.now().isoformat()
+        account.save(update_fields=('last_synced_at', 'status', 'error_message', 'sync_cursor', 'updated_at'))
+        cleanup_stored_emails()
+        return imported
+    finally:
+        pythoncom.CoUninitialize()
+
+
+def list_local_attachments(email):
+    if email.account.provider != EmailAccount.Provider.OUTLOOK_LOCAL:
+        return []
+    pythoncom, namespace = _local_outlook_namespace()
+    try:
+        item = namespace.GetItemFromID(email.provider_message_id)
+        return [{'index': index, 'name': str(item.Attachments.Item(index).FileName), 'size': int(item.Attachments.Item(index).Size or 0)} for index in range(1, item.Attachments.Count + 1)]
+    finally:
+        pythoncom.CoUninitialize()
+
+
+def import_local_attachment(email, index):
+    allowed = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.txt'}
+    pythoncom, namespace = _local_outlook_namespace()
+    try:
+        item = namespace.GetItemFromID(email.provider_message_id)
+        if index < 1 or index > item.Attachments.Count:
+            raise RuntimeError('附件不存在。')
+        attachment = item.Attachments.Item(index)
+        name = Path(str(attachment.FileName)).name
+        if Path(name).suffix.lower() not in allowed:
+            raise RuntimeError('该附件类型不允许导入资料库。')
+        if int(attachment.Size or 0) > 10 * 1024 * 1024:
+            raise RuntimeError('附件不能超过 10 MB。')
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir) / name
+            attachment.SaveAsFile(str(temp_path))
+            with temp_path.open('rb') as stream:
+                document = Document(
+                    user=email.account.user,
+                    company=email.company,
+                    application=email.application,
+                    document_type=Document.Type.OTHER,
+                    original_name=name,
+                    mime_type=mimetypes.guess_type(name)[0] or 'application/octet-stream',
+                    description=f'从邮件“{email.subject}”导入',
+                )
+                document.file.save(name, File(stream), save=True)
+                return document
+    finally:
+        pythoncom.CoUninitialize()
 
 
 def send_message(account, *, to, subject, body, application=None):
+    if account.provider == EmailAccount.Provider.OUTLOOK_LOCAL:
+        raise RuntimeError('本机 Outlook 连接为只读模式，不能发送邮件。')
     token = refresh_access_token(account); headers = {'Authorization': f'Bearer {token}'}
     if account.provider == 'gmail':
         message = EmailMessage(); message['To'] = to; message['From'] = account.email_address; message['Subject'] = subject; message.set_content(body)
