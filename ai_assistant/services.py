@@ -1,5 +1,4 @@
 import hashlib
-import json
 import re
 from pathlib import Path
 
@@ -9,6 +8,7 @@ from django.utils import timezone
 from .crypto import decrypt_api_key
 from .models import AIMatchAnalysis, AISettings, AITask
 from .providers import OllamaProvider, OpenAIProvider
+from .prompts import PROMPT_VERSION, build_jd_prompt, build_match_prompt
 from .schemas import JDParseResult, JobMatchResult
 
 
@@ -37,7 +37,7 @@ def create_ai_task(*, user, task_type, job, provider, source_text='', resume=Non
     with transaction.atomic():
         existing = AITask.objects.select_for_update().filter(user=user, task_type=task_type, job=job, resume=resume, status__in=ACTIVE_STATUSES).first()
         if existing: return existing, False
-        task = AITask.objects.create(user=user, task_type=task_type, provider=provider, model=select_model(settings_obj, task_type, provider), job=job, resume=resume, input_fingerprint=fingerprint, input_payload={'source_text': source_text} if task_type == AITask.Type.JD_PARSE else {}, sensitive_cloud_consent=provider == AISettings.Provider.OPENAI and settings_obj.allow_sensitive_cloud)
+        task = AITask.objects.create(user=user, task_type=task_type, provider=provider, model=select_model(settings_obj, task_type, provider), job=job, resume=resume, input_fingerprint=fingerprint, prompt_version=PROMPT_VERSION, input_payload={'source_text': source_text} if task_type == AITask.Type.JD_PARSE else {}, sensitive_cloud_consent=provider == AISettings.Provider.OPENAI and settings_obj.allow_sensitive_cloud)
     from .tasks import execute_ai_task
     execute_ai_task.delay(str(task.pk))
     return task, True
@@ -72,10 +72,6 @@ def redact_contact_details(text):
     return re.sub(r'(?<!\w)(?:\+?\d[\d\s().-]{7,}\d)', '[PHONE REDACTED]', text)
 
 
-def jd_prompt(source_text):
-    return 'Extract only facts stated or reasonably inferred from the following job description. Use null and unknown_fields when uncertain. Preserve the source language in prose fields.\n\n<job_description>\n' + source_text[:50000] + '\n</job_description>'
-
-
 def match_prompt(task):
     resume_text = extract_resume_text(task.resume)
     if task.provider == AISettings.Provider.OPENAI: resume_text = redact_contact_details(resume_text)
@@ -83,13 +79,13 @@ def match_prompt(task):
     job_data = {'title': job.title, 'company': job.company.name, 'description': job.description, 'requirements': job.requirements, 'benefits': job.benefits, 'metadata': job.ai_metadata}
     profile = getattr(task.user, 'profile', None)
     profile_data = {'target_role': getattr(profile, 'target_role', ''), 'location': getattr(profile, 'location', '')}
-    return 'Compare the resume with the job. Scores are advisory; cite concrete evidence and state missing information.\n\n<job>\n' + json.dumps(job_data, ensure_ascii=False) + '\n</job>\n<profile>\n' + json.dumps(profile_data, ensure_ascii=False) + '\n</profile>\n<resume>\n' + resume_text + '\n</resume>'
+    return build_match_prompt(job_data=job_data, profile_data=profile_data, resume_text=resume_text)
 
 
 def run_task(task):
     provider = provider_for(task)
     if task.task_type == AITask.Type.JD_PARSE:
-        return provider.generate(model=task.model, prompt=jd_prompt(task.input_payload.get('source_text', '')), schema=JDParseResult)
+        return provider.generate(model=task.model, prompt=build_jd_prompt(task.input_payload.get('source_text', '')), schema=JDParseResult)
     return provider.generate(model=task.model, prompt=match_prompt(task), schema=JobMatchResult)
 
 
