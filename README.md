@@ -33,6 +33,7 @@ flowchart LR
 - Versioned resumes, private documents, contacts, communications, and tags
 - Dashboard analytics for sources, monthly trends, conversion, and stage duration
 - Read-only classic Outlook synchronization on Windows—no Azure account or mailbox password required
+- Local-first AI for structured JD parsing and explainable resume-to-job matching
 
 ### Safe local email management
 
@@ -63,6 +64,7 @@ flowchart TB
 | `productivity` | Contacts, resumes, documents, communications, and tags |
 | `core` | Dashboard, calendar, notifications, and reminders |
 | `mailboxes` | Local Outlook sync, retention, linking, reading, and attachment import |
+| `ai_assistant` | Ollama/OpenAI providers, JD extraction, matching, consent, and task history |
 
 ## Data Model
 
@@ -105,7 +107,9 @@ Copy-Item .env.example .env
 
 Open [http://127.0.0.1:8000/](http://127.0.0.1:8000/). PowerShell activation is optional; calling the virtual-environment Python directly avoids execution-policy issues.
 
-For the configured local workspace, `powershell -ExecutionPolicy Bypass -File .\scripts\start-all.ps1` starts MySQL and Django, plus Celery when Redis is available.
+For the configured local workspace, `powershell -ExecutionPolicy Bypass -File .\scripts\start-all.ps1` starts MySQL, portable Ollama, the Celery worker and beat, and Django.
+
+The current Windows workspace uses a project-local filesystem Celery broker and portable Ollama, so no Redis or C-drive installation is required. See [`docs/ai-assistant.md`](docs/ai-assistant.md).
 
 ## Outlook Read-only Sync
 

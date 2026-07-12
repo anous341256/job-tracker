@@ -27,12 +27,14 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('', include('core.urls')),
     path('companies/', include('companies.urls')),
+    path('jobs/', include('ai_assistant.job_urls')),
     path('jobs/', include('companies.job_urls')),
     path('applications/', include('applications.urls')),
     path('interviews/', __import__('applications.views', fromlist=['InterviewListView']).InterviewListView.as_view(), name='interviews'),
     path('calendar/', TemplateView.as_view(template_name='core/calendar.html'), name='calendar'),
     path('', include('productivity.urls')),
     path('email/', include('mailboxes.urls')),
+    path('ai/', include('ai_assistant.urls')),
 ]
 
 if settings.DEBUG:

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'core.apps.CoreConfig',
     'productivity.apps.ProductivityConfig',
     'mailboxes.apps.MailboxesConfig',
+    'ai_assistant.apps.AiAssistantConfig',
     'allauth',
     'allauth.account',
     'django_celery_beat',
@@ -178,14 +179,29 @@ EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Job Tracker <noreply@localhost>')
 
-CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='redis://127.0.0.1:6379/0')
-CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='redis://127.0.0.1:6379/1')
+CELERY_LOCAL_DIR = BASE_DIR / '.local' / 'celery'
+CELERY_LOCAL_QUEUE = CELERY_LOCAL_DIR / 'queue'
+CELERY_LOCAL_PROCESSED = CELERY_LOCAL_DIR / 'processed'
+CELERY_LOCAL_CONTROL = CELERY_LOCAL_DIR / 'control'
+for directory in (CELERY_LOCAL_QUEUE, CELERY_LOCAL_PROCESSED, CELERY_LOCAL_CONTROL):
+    directory.mkdir(parents=True, exist_ok=True)
+CELERY_BROKER_URL = env('CELERY_BROKER_URL', default='filesystem://')
+CELERY_RESULT_BACKEND = env('CELERY_RESULT_BACKEND', default='cache+memory://')
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'data_folder_in': str(CELERY_LOCAL_QUEUE),
+    'data_folder_out': str(CELERY_LOCAL_QUEUE),
+    'processed_folder': str(CELERY_LOCAL_PROCESSED),
+    'control_folder': str(CELERY_LOCAL_CONTROL),
+    'store_processed': True,
+}
+CELERY_TASK_IGNORE_RESULT = True
 CELERY_TIMEZONE = TIME_ZONE
-CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', default=DEBUG)
+CELERY_TASK_ALWAYS_EAGER = env.bool('CELERY_TASK_ALWAYS_EAGER', default=False)
 CELERY_BEAT_SCHEDULE = {
     'build-reminders-every-hour': {'task': 'core.tasks.build_reminders', 'schedule': 3600.0},
     'send-due-reminders-every-five-minutes': {'task': 'core.tasks.send_due_reminders', 'schedule': 300.0},
     'cleanup-email-storage-daily': {'task': 'mailboxes.tasks.cleanup_email_storage', 'schedule': 86400.0},
+    'cleanup-ai-tasks-daily': {'task': 'ai_assistant.tasks.cleanup_ai_tasks', 'schedule': 86400.0},
 }
 
 if not DEBUG:
@@ -206,3 +222,7 @@ MICROSOFT_TENANT = env('MICROSOFT_TENANT', default='common')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AI_CREDENTIAL_ENCRYPTION_KEY = env('AI_CREDENTIAL_ENCRYPTION_KEY', default='')
+AI_TASK_STALE_MINUTES = env.int('AI_TASK_STALE_MINUTES', default=30)
+AI_MODEL_PRICES = env.json('AI_MODEL_PRICES', default={'gpt-5.6-luna': {'input': 1.0, 'output': 6.0}, 'gpt-5.6-terra': {'input': 2.5, 'output': 15.0}})

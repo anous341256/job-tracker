@@ -143,6 +143,7 @@ class JobPosition(models.Model):
         default=SalaryPeriod.YEARLY,
     )
     notes = models.TextField(_('备注'), blank=True)
+    ai_metadata = models.JSONField(_('AI 结构化元数据'), default=dict, blank=True)
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
     updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
 
