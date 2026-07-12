@@ -1,0 +1,1 @@
+body{background:#f6f7fb}.card{box-shadow:0 1px 3px rgba(0,0,0,.06)}.board{display:flex;gap:1rem;overflow-x:auto;align-items:flex-start}.board-column{background:#e9ecef;border-radius:.5rem;padding:.75rem;min-width:260px;max-width:300px}.board-column .card a{text-decoration:none;color:inherit}

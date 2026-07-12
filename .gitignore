@@ -1,0 +1,25 @@
+.venv/
+.local/
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Local Django state
+db.sqlite3
+media/
+staticfiles/
+celerybeat-schedule*
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

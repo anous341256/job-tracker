@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>面试</h1>{% for x in object_list %}<div class="card p-3 mb-2"><strong>{{ x.scheduled_at }} · {{ x.title }}</strong><div>{{ x.application.job_position.company }} / {{ x.application.job_position.title }}</div></div>{% empty %}<p>暂无面试</p>{% endfor %}{% endblock %}

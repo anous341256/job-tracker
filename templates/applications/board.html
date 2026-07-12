@@ -1,0 +1,1 @@
+{% extends 'base.html' %}{% block content %}<h1>投递看板</h1><div class="board">{% for value,label,items in columns %}<section class="board-column"><h2 class="h6">{{ label }} <span class="badge text-bg-secondary">{{ items|length }}</span></h2>{% for application in items %}{% include 'applications/_card.html' %}{% endfor %}</section>{% endfor %}</div>{% endblock %}
