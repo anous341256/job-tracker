@@ -39,6 +39,10 @@ class Company(models.Model):
     priority = models.CharField(
         _('优先级'), max_length=10, choices=Priority.choices, default=Priority.MEDIUM
     )
+    pinned_order = models.PositiveIntegerField(
+        _('首页置顶顺序'), null=True, blank=True,
+        help_text=_('留空时按最近行动时间自动排序。'),
+    )
     notes = models.TextField(_('备注'), blank=True)
     archived_at = models.DateTimeField(_('归档时间'), null=True, blank=True)
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
@@ -61,6 +65,15 @@ class Company(models.Model):
 
 
 class JobPosition(models.Model):
+    class Category(models.TextChoices):
+        TECHNICAL = 'technical', _('技术职')
+        GENERAL = 'general', _('综合职')
+        CONSULTING = 'consulting', _('咨询职')
+        SALES = 'sales', _('营业职')
+        PLANNING = 'planning', _('企划／运营职')
+        DESIGN = 'design', _('设计职')
+        OTHER = 'other', _('其他')
+
     class Status(models.TextChoices):
         DRAFT = 'draft', _('待整理')
         OPEN = 'open', _('招聘中')
@@ -95,6 +108,13 @@ class JobPosition(models.Model):
         verbose_name=_('公司'),
     )
     title = models.CharField(_('职位名称'), max_length=200)
+    category = models.CharField(
+        _('职位类别'), max_length=20, choices=Category.choices, default=Category.TECHNICAL
+    )
+    category_other = models.CharField(
+        _('其他职位类别'), max_length=100, blank=True,
+        help_text=_('选择“其他”时填写。'),
+    )
     department = models.CharField(_('部门'), max_length=150, blank=True)
     status = models.CharField(
         _('状态'), max_length=10, choices=Status.choices, default=Status.OPEN
@@ -127,6 +147,7 @@ class JobPosition(models.Model):
         default=SalaryPeriod.YEARLY,
     )
     notes = models.TextField(_('备注'), blank=True)
+    ai_metadata = models.JSONField(_('AI 结构化元数据'), default=dict, blank=True)
     created_at = models.DateTimeField(_('创建时间'), auto_now_add=True)
     updated_at = models.DateTimeField(_('更新时间'), auto_now=True)
 

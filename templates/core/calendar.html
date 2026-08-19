@@ -1,1 +1,208 @@
-{% extends 'base.html' %}{% block content %}<h1>日历</h1><div id="calendar"></div>{% endblock %}{% block scripts %}<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script><script>document.addEventListener('DOMContentLoaded',()=>new FullCalendar.Calendar(document.getElementById('calendar'),{initialView:'dayGridMonth',locale:'zh-cn',events:'{% url "core:calendar-events" %}'}).render())</script>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">SCHEDULE</span>
+    <h1>日历</h1>
+    <p>面试和日程按真实持续时间显示；可以列出工作日 10:00–19:00 的空闲时间。</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <label class="free-slot-toggle" for="free-slot-toggle">
+      <input id="free-slot-toggle" type="checkbox" class="form-check-input">
+      <span>显示空闲时间</span>
+    </label>
+    <a class="btn btn-outline-primary" href="{% url 'interviews' %}">面试历史</a>
+    <a class="btn btn-outline-primary" href="{% url 'core:todo-create' %}">新增 To Do</a>
+    <a class="btn btn-primary" href="{% url 'core:calendar-event-create' %}">新增日程</a>
+  </div>
+</div>
+
+<div class="calendar-shell"><div id="calendar"></div></div>
+
+<section id="free-slot-panel" class="free-slot-panel" hidden>
+  <header>
+    <div>
+      <span class="eyebrow">AVAILABLE TIME</span>
+      <h2>空闲时间一览</h2>
+      <p id="free-slot-summary">工作日 10:00–19:00，连续30分钟以上。</p>
+    </div>
+    <button id="copy-all-free-slots" type="button" class="btn btn-outline-success" disabled>复制全部</button>
+  </header>
+  <div id="free-slot-view-notice" class="alert alert-info py-2" hidden>月视图不绘制小时空档；下面仍列出当前月份的空闲时间。切换到周或日视图可在日历中查看绿色时间条。</div>
+  <div id="free-slot-list" class="free-slot-list" aria-live="polite"></div>
+</section>
+
+<div class="calendar-legend">
+  <span><i class="calendar-dot interview"></i>面试</span>
+  <span><i class="calendar-dot briefing"></i>说明会</span>
+  <span><i class="calendar-dot assessment"></i>笔试/测评</span>
+  <span><i class="calendar-dot deadline"></i>职位/ES 截止</span>
+  <span><i class="calendar-dot call"></i>电话沟通</span>
+  <span><i class="calendar-dot followup"></i>投递跟进</span>
+  <span><i class="calendar-dot todo"></i>To Do</span>
+  <span><i class="calendar-dot other"></i>其他日程</span>
+  <span><i class="calendar-dot free-slot"></i>工作时间内空闲</span>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.20/index.global.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const freeSlotToggle = document.getElementById('free-slot-toggle');
+  const freeSlotPanel = document.getElementById('free-slot-panel');
+  const freeSlotList = document.getElementById('free-slot-list');
+  const freeSlotSummary = document.getElementById('free-slot-summary');
+  const freeSlotViewNotice = document.getElementById('free-slot-view-notice');
+  const copyAllButton = document.getElementById('copy-all-free-slots');
+  let freeSlotSource = null;
+  let currentFreeSlots = [];
+
+  function copyText(value, button) {
+    const done = () => {
+      const original = button.textContent;
+      button.textContent = '已复制';
+      window.setTimeout(() => { button.textContent = original; }, 1200);
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(value).then(done);
+      return;
+    }
+    const area = document.createElement('textarea');
+    area.value = value;
+    area.style.position = 'fixed';
+    area.style.opacity = '0';
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    done();
+  }
+
+  function renderFreeSlotList(slots) {
+    currentFreeSlots = slots;
+    freeSlotList.replaceChildren();
+    copyAllButton.disabled = slots.length === 0;
+    const totalMinutes = slots.reduce((sum, slot) => sum + slot.extendedProps.minutes, 0);
+    const totalHours = Math.floor(totalMinutes / 60);
+    const remainder = totalMinutes % 60;
+    const totalLabel = `${totalHours ? totalHours + '小时' : ''}${remainder ? remainder + '分钟' : ''}` || '0分钟';
+    freeSlotSummary.textContent = slots.length
+      ? `当前范围共 ${slots.length} 个空档，合计 ${totalLabel}。日期按日本曜日标注。`
+      : '当前范围内没有连续30分钟以上的空闲时间。';
+    if (!slots.length) {
+      const empty = document.createElement('p');
+      empty.className = 'empty-state mb-0';
+      empty.textContent = '没有可列出的空闲时间。';
+      freeSlotList.appendChild(empty);
+      return;
+    }
+    slots.forEach(slot => {
+      const row = document.createElement('div');
+      row.className = 'free-slot-row';
+      const text = document.createElement('div');
+      const date = document.createElement('strong');
+      date.textContent = slot.extendedProps.dateLabel;
+      const time = document.createElement('span');
+      time.textContent = `${slot.extendedProps.timeLabel} · ${slot.extendedProps.duration}`;
+      text.append(date, time);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'btn btn-sm btn-outline-success';
+      button.textContent = '复制';
+      button.addEventListener('click', () => copyText(slot.extendedProps.copyText, button));
+      row.append(text, button);
+      freeSlotList.appendChild(row);
+    });
+  }
+
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: 'timeGridWeek',
+    locale: 'zh-cn',
+    firstDay: 1,
+    height: 'auto',
+    nowIndicator: true,
+    allDayText: '全天',
+    slotMinTime: '07:00:00',
+    slotMaxTime: '23:00:00',
+    slotDuration: '00:30:00',
+    slotLabelFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
+    eventTimeFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
+    headerToolbar: {
+      left: 'prev,next today',
+      center: 'title',
+      right: 'dayGridMonth,timeGridWeek,timeGridDay'
+    },
+    buttonText: {today: '今天', month: '月', week: '周', day: '日'},
+    events: '{% url "core:calendar-events" %}',
+    datesSet(info) {
+      freeSlotViewNotice.hidden = !(freeSlotToggle.checked && info.view.type === 'dayGridMonth');
+    },
+    eventContent(info) {
+      if (info.event.extendedProps.kind === 'free_slot') return {domNodes: []};
+      const duration = info.event.extendedProps.duration;
+      const title = document.createElement('div');
+      title.className = 'fc-event-title-custom';
+      title.textContent = info.event.title;
+      if (!duration) return {domNodes: [title]};
+      const time = document.createElement('div');
+      time.className = 'fc-event-duration-custom';
+      time.textContent = duration;
+      return {domNodes: [title, time]};
+    },
+    eventDidMount(info) {
+      if (info.event.extendedProps.kind !== 'free_slot') return;
+      info.el.setAttribute('aria-label', info.event.extendedProps.copyText);
+      const label = document.createElement('span');
+      label.className = 'free-slot-event-label';
+      label.textContent = `${info.event.extendedProps.timeLabel} 空闲`;
+      info.el.appendChild(label);
+    },
+    eventClick(info) {
+      if (info.event.extendedProps.kind === 'free_slot') info.jsEvent.preventDefault();
+    }
+  });
+  calendar.render();
+
+  const freeSlotEventSource = {
+    id: 'free-slots',
+    events(fetchInfo, successCallback, failureCallback) {
+      const query = new URLSearchParams({start: fetchInfo.startStr, end: fetchInfo.endStr});
+      fetch(`{% url "core:calendar-free-slots" %}?${query.toString()}`, {
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+      })
+        .then(response => {
+          if (!response.ok) throw new Error('空闲时间读取失败');
+          return response.json();
+        })
+        .then(slots => {
+          renderFreeSlotList(slots);
+          successCallback(calendar.view.type === 'dayGridMonth' ? [] : slots);
+        })
+        .catch(error => {
+          freeSlotSummary.textContent = error.message;
+          freeSlotList.replaceChildren();
+          failureCallback(error);
+        });
+    },
+  };
+
+  freeSlotToggle.addEventListener('change', () => {
+    freeSlotPanel.hidden = !freeSlotToggle.checked;
+    freeSlotViewNotice.hidden = !(freeSlotToggle.checked && calendar.view.type === 'dayGridMonth');
+    if (freeSlotToggle.checked) {
+      if (!freeSlotSource) freeSlotSource = calendar.addEventSource(freeSlotEventSource);
+    } else {
+      if (freeSlotSource) freeSlotSource.remove();
+      freeSlotSource = null;
+      currentFreeSlots = [];
+      freeSlotList.replaceChildren();
+    }
+  });
+
+  copyAllButton.addEventListener('click', () => {
+    const value = currentFreeSlots.map(slot => slot.extendedProps.copyText).join('\n');
+    if (value) copyText(value, copyAllButton);
+  });
+});
+</script>
+{% endblock %}

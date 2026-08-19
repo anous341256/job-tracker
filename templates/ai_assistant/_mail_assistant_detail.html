@@ -1,0 +1,83 @@
+<section id="mail-assistant-detail" class="mail-assistant-detail" {% if active_task %}hx-get="{% url 'ai_assistant:mail-assistant-email' selected_email.pk %}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <article class="mail-message-pane">
+    <header class="mail-detail-header">
+      <div><span class="eyebrow">CURRENT EMAIL</span><h2>{{ selected_email.subject|default:'（无主题）' }}</h2><p>{{ selected_email.sender }} · {{ selected_email.received_at }}</p></div>
+      <span class="review-status review-status-{{ assistant_thread.status }}">{{ assistant_thread.get_status_display }}</span>
+    </header>
+    <div class="mail-association-box">
+      {% if selected_email.company %}<div><strong>{{ selected_email.company.name }}</strong>{% if selected_email.application %} · {{ selected_email.application }}{% endif %}</div>
+      {% else %}<p class="mb-2"><strong>这封邮件尚未关联公司</strong>，确认日程前需要选择或新建。</p>{% endif %}
+      <details {% if not selected_email.company %}open{% endif %}>
+        <summary>{% if selected_email.company %}更改关联公司{% else %}关联公司{% endif %}</summary>
+        <form method="post" action="{% url 'ai_assistant:mail-assistant-company' selected_email.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-company' selected_email.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML" class="mt-3">
+          {% csrf_token %}<div class="row g-2"><div class="col-md-6">{{ company_form.company.label_tag }}{{ company_form.company }}</div><div class="col-md-6">{{ company_form.new_company_name.label_tag }}{{ company_form.new_company_name }}</div></div>
+          <button class="btn btn-sm btn-outline-primary mt-2">保存关联</button>
+        </form>
+      </details>
+    </div>
+    <dl class="mail-meta-grid"><dt>收件人</dt><dd>{{ selected_email.recipients|join:', '|default:'—' }}</dd><dt>文件夹</dt><dd>{{ selected_email.folder_name }}</dd><dt>附件</dt><dd>{% if selected_email.has_attachments %}有附件{% else %}无附件{% endif %}</dd></dl>
+    <div class="mail-review-body">{{ selected_email.body_text|default:'（无正文）'|linebreaksbr }}</div>
+    <footer class="mail-review-footer">
+      {% if assistant_thread.status == 'reviewed' %}
+        <div><strong>{{ assistant_thread.get_resolution_display }}</strong><small> · {{ assistant_thread.reviewed_at }}</small></div>
+        <form method="post" action="{% url 'ai_assistant:mail-assistant-reopen' selected_email.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-reopen' selected_email.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">{% csrf_token %}<button class="btn btn-outline-primary">重新打开</button></form>
+      {% else %}
+        <form method="post" action="{% url 'ai_assistant:mail-assistant-complete' selected_email.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-complete' selected_email.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">
+          {% csrf_token %}<button class="btn btn-success" {% if has_unresolved %}disabled title="请先处理候选"{% endif %}>{% if has_approved %}完成本邮件审核{% else %}确认没有行动事项{% endif %}</button>
+        </form>
+      {% endif %}
+    </footer>
+  </article>
+  <aside class="mail-ai-pane">
+    <header class="mail-ai-header">
+      <div><span class="eyebrow">LOCAL QWEN3:8B</span><h2>千问助手</h2></div>
+      {% if assistant_messages and not active_task %}<form method="post" action="{% url 'ai_assistant:mail-assistant-clear' selected_email.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-clear' selected_email.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML" onsubmit="return confirm('清空对话记录？候选和正式日程不会删除。')">{% csrf_token %}<button class="btn btn-sm btn-link text-muted">清空对话</button></form>{% endif %}
+    </header>
+    <div class="mail-chat-history">
+      {% for message in assistant_messages %}<div class="chat-bubble chat-bubble-{{ message.role }}"><span>{{ message.get_role_display }}</span><div>{{ message.content|linebreaksbr }}</div></div>
+      {% empty %}<div class="chat-welcome"><strong>还没有开始分析</strong><p>可以输入“请总结这封邮件并提取日程和待办”，千问会给出可审核建议。</p></div>{% endfor %}
+      {% if active_task %}<div class="chat-bubble chat-bubble-assistant chat-processing"><span>千问</span><div class="spinner-border spinner-border-sm" aria-hidden="true"></div>{% if active_task.status == 'waiting_host' %}等待本机代理和 Ollama…{% else %}正在分析邮件…{% endif %}</div>
+      {% elif failed_task %}<div class="alert alert-warning small">上一次分析失败：{{ failed_task.error_message }}。确认本机 Ollama 已启动后可以重新发送。</div>{% endif %}
+    </div>
+    {% if candidates %}<h3 class="candidate-section-title">日程建议</h3>{% endif %}
+    {% for candidate in candidates %}
+      <section class="schedule-candidate-card schedule-candidate-{{ candidate.status }}">
+        {% widthratio candidate.confidence 1 100 as confidence_percent %}
+        <header><div><span class="candidate-version">建议 v{{ candidate.version }}</span><h3>{{ candidate.title }}</h3></div><span class="badge text-bg-{% if candidate.status == 'approved' %}success{% elif candidate.status == 'rejected' %}secondary{% else %}warning{% endif %}">{{ candidate.get_status_display }}</span></header>
+        <p class="candidate-evidence">“{{ candidate.evidence }}”</p><p class="small text-muted">置信度 {{ confidence_percent }}%{% if candidate.missing_fields %} · 待补充：{{ candidate.missing_fields|join:'、' }}{% endif %}</p>
+        {% if candidate.status == 'pending' or candidate.status == 'needs_info' %}
+          <details {% if candidate.status == 'needs_info' %}open{% endif %}><summary>核对并编辑</summary>
+            <form method="post" class="candidate-review-form mt-3" action="{% url 'ai_assistant:mail-assistant-candidate-approve' candidate.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-candidate-approve' candidate.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">{% csrf_token %}
+              {% for field in candidate.workbench_form %}<div class="mb-2">{{ field.label_tag }}{{ field }}{% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}<button class="btn btn-primary w-100">确认并创建</button>
+            </form>
+          </details>
+          <form method="post" class="mt-2" action="{% url 'ai_assistant:mail-assistant-candidate-reject' candidate.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-candidate-reject' candidate.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">{% csrf_token %}<button class="btn btn-sm btn-outline-danger w-100">忽略这个建议</button></form>
+        {% else %}<p class="small mb-0">{% if candidate.status == 'approved' %}已经创建 {{ candidate.created_object_type }} #{{ candidate.created_object_id }}{% else %}此建议未写入日历{% endif %}</p>{% endif %}
+      </section>
+    {% endfor %}
+    {% if todo_candidates %}<h3 class="candidate-section-title">To Do 建议</h3>{% endif %}
+    {% for candidate in todo_candidates %}
+      <section class="schedule-candidate-card todo-candidate-card schedule-candidate-{{ candidate.status }}">
+        {% widthratio candidate.confidence 1 100 as confidence_percent %}
+        <header><div><span class="candidate-version">TO DO · v{{ candidate.version }}</span><h3>{{ candidate.title }}</h3></div><span class="badge text-bg-{% if candidate.status == 'approved' %}success{% elif candidate.status == 'rejected' %}secondary{% else %}warning{% endif %}">{{ candidate.get_status_display }}</span></header>
+        <p class="candidate-evidence">“{{ candidate.evidence }}”</p>
+        <p class="small text-muted">{{ candidate.get_action_type_display }} · 优先级 {{ candidate.get_priority_display }} · 置信度 {{ confidence_percent }}%</p>
+        {% if not candidate.due_at %}<p class="small text-warning mb-2">邮件未提供明确截止时间，可以直接批准或手动补充。</p>{% endif %}
+        {% if candidate.missing_fields %}<p class="small text-muted">待补充：{{ candidate.missing_fields|join:'、' }}</p>{% endif %}
+        {% if candidate.status == 'pending' or candidate.status == 'needs_info' %}
+          <details {% if candidate.status == 'needs_info' %}open{% endif %}><summary>核对并编辑</summary>
+            <form method="post" class="candidate-review-form mt-3" action="{% url 'ai_assistant:mail-assistant-todo-approve' candidate.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-todo-approve' candidate.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">{% csrf_token %}
+              {% for field in candidate.workbench_form %}<div class="mb-2">{{ field.label_tag }}{{ field }}{% for error in field.errors %}<div class="invalid-feedback d-block">{{ error }}</div>{% endfor %}</div>{% endfor %}<button class="btn btn-primary w-100">确认并创建 To Do</button>
+            </form>
+          </details>
+          <form method="post" class="mt-2" action="{% url 'ai_assistant:mail-assistant-todo-reject' candidate.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-todo-reject' candidate.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">{% csrf_token %}<button class="btn btn-sm btn-outline-danger w-100">忽略这个 To Do</button></form>
+        {% else %}<p class="small mb-0">{% if candidate.status == 'approved' %}已经创建 To Do #{{ candidate.created_object_id }}{% else %}此建议未创建任务{% endif %}</p>{% endif %}
+      </section>
+    {% endfor %}
+    {% if assistant_thread.status != 'reviewed' %}
+      <form method="post" class="mail-chat-composer" action="{% url 'ai_assistant:mail-assistant-chat' selected_email.pk %}" hx-post="{% url 'ai_assistant:mail-assistant-chat' selected_email.pk %}" hx-target="#mail-assistant-detail" hx-swap="outerHTML">
+        {% csrf_token %}{{ chat_form.client_request_id }}{{ chat_form.content }}<button class="btn btn-primary" {% if active_task %}disabled{% endif %}>发送给千问</button>
+      </form>
+    {% endif %}
+  </aside>
+</section>

@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <span class="eyebrow">TASKS</span>
+    <h1>To Do List</h1>
+    <p>把求职流程里的杂项拆成可追踪的小任务，颜色表示当前完成状态。</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'core:todo-create' %}">新增 To Do</a>
+</div>
+
+<div class="todo-summary">
+  <a class="todo-chip status-todo" href="{% url 'core:todos' %}?status=todo">未开始 {{ counts.todo }}</a>
+  <a class="todo-chip status-in_progress" href="{% url 'core:todos' %}?status=in_progress">进行中 {{ counts.in_progress }}</a>
+  <a class="todo-chip status-blocked" href="{% url 'core:todos' %}?status=blocked">受阻 {{ counts.blocked }}</a>
+  <a class="todo-chip status-done" href="{% url 'core:todos' %}?status=done">已完成 {{ counts.done }}</a>
+</div>
+
+<form class="content-panel mb-3" method="get">
+  <div class="row g-2 align-items-end">
+    <div class="col-md-5">
+      <label class="form-label">搜索</label>
+      <input class="form-control" name="q" value="{{ q }}" placeholder="任务标题或说明">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">公司</label>
+      <select class="form-select" name="company">
+        <option value="">全部</option>
+        {% for company in companies %}<option value="{{ company.pk }}" {% if company_id == company.pk|stringformat:'s' %}selected{% endif %}>{{ company.name }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">状态</label>
+      <select class="form-select" name="status">
+        <option value="">全部</option>
+        {% for value,label in status_choices %}
+          <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-auto">
+      <button class="btn btn-primary">筛选</button>
+      <a class="btn btn-light" href="{% url 'core:todos' %}">重置</a>
+    </div>
+  </div>
+</form>
+
+<div class="todo-list">
+  {% for item in items %}
+    <div class="todo-row status-{{ item.status }}">
+      <div class="todo-status-bar"></div>
+      <div class="todo-main">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+          <span class="todo-status-label">{{ item.get_status_display }}</span>
+          <strong>{{ item.title }}</strong>
+          <span class="todo-priority priority-{{ item.priority }}">{{ item.get_priority_display }}</span>
+        </div>
+        {% if item.notes %}<p>{{ item.notes|truncatechars:120 }}</p>{% endif %}
+        <div class="todo-meta">
+          <span>公司：{{ item.company.name }}</span>
+          {% if item.job_position %}<span>职位：{{ item.job_position.title }}</span>{% endif %}
+          {% if item.due_at %}<span>截止：{{ item.due_at|date:"Y-m-d H:i" }}</span>{% endif %}
+          {% if item.completed_at %}<span>完成：{{ item.completed_at|date:"Y-m-d H:i" }}</span>{% endif %}
+          {% if item.source_email %}<a href="{% url 'mailboxes:message-detail' item.source_email.pk %}">查看来源邮件</a>{% endif %}
+          {% if item.source_url %}<a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">打开操作页面</a>{% endif %}
+        </div>
+      </div>
+      <div class="todo-actions">
+        <form method="post" action="{% url 'core:todo-toggle' item.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <button class="btn btn-sm {% if item.status == 'done' %}btn-outline-secondary{% else %}btn-outline-success{% endif %}">
+            {% if item.status == 'done' %}重开{% else %}完成{% endif %}
+          </button>
+        </form>
+        <a class="btn btn-sm btn-outline-primary" href="{% url 'core:todo-edit' item.pk %}">编辑</a>
+        <a class="btn btn-sm btn-outline-danger" href="{% url 'core:todo-delete' item.pk %}">删除</a>
+      </div>
+    </div>
+  {% empty %}
+    <div class="empty-state">还没有 To Do。先新增一个，比如“更新日文简历”或“跟进 A 公司 HR”。</div>
+  {% endfor %}
+</div>
+
+{% include 'generic/pagination.html' %}
+{% endblock %}

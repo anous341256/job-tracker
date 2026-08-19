@@ -1,10 +1,12 @@
 from django import forms
+from core.form_widgets import apply_date_picker_widgets
 from .models import Communication, Contact, Document, Resume, Tag
 
 
 class UserOwnedForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        apply_date_picker_widgets(self.fields)
         self.user = user
         for field in self.fields.values(): field.widget.attrs.setdefault('class', 'form-control')
         for name in ('company', 'application', 'contact'):
@@ -33,3 +35,9 @@ class CommunicationForm(UserOwnedForm):
     class Meta: model = Communication; exclude = ('user', 'created_at'); widgets = {'occurred_at': forms.DateTimeInput(attrs={'type': 'datetime-local'})}
 class TagForm(UserOwnedForm):
     class Meta: model = Tag; exclude = ('user',)
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, user=user, **kwargs)
+        if user:
+            self.fields['companies'].queryset = self.fields['companies'].queryset.filter(user=user)
+            self.fields['job_positions'].queryset = self.fields['job_positions'].queryset.filter(company__user=user)
+            self.fields['applications'].queryset = self.fields['applications'].queryset.filter(user=user)

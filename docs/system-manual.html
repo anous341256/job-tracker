@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Tracker · 系统说明书</title>
+  <style>
+    :root{--ink:#14233a;--muted:#617085;--line:#dce3ea;--paper:#fff;--canvas:#f5f6f4;--navy:#173a63;--red:#b13b43;--green:#18775c;--amber:#9c6500;--blue-bg:#eaf2fb;--green-bg:#eaf7f2;--amber-bg:#fff7e5;--red-bg:#fff0f1}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--canvas);color:var(--ink);font-family:"Noto Sans SC","Yu Gothic UI","Microsoft YaHei",system-ui,sans-serif;line-height:1.7}.shell{max-width:1180px;margin:auto;padding:0 28px}header{background:linear-gradient(120deg,#132f53,#214a79);color:#fff;padding:56px 0 48px;border-bottom:5px solid var(--red)}.brand{display:flex;gap:14px;align-items:center}.mark{width:43px;height:43px;display:grid;place-items:center;background:#fff;color:var(--navy);font:700 25px Georgia,serif}.brand small{display:block;letter-spacing:.18em;font-size:.66rem;opacity:.75}.hero h1{font-size:clamp(2rem,5vw,3.65rem);line-height:1.12;margin:44px 0 12px;letter-spacing:.02em}.hero p{max-width:770px;margin:0;color:#e1eaf5;font-size:1.05rem}.meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:25px}.badge{border:1px solid rgba(255,255,255,.34);padding:4px 10px;font-size:.83rem}.layout{display:grid;grid-template-columns:242px minmax(0,1fr);gap:34px;padding-top:34px;padding-bottom:70px}aside{position:sticky;top:20px;height:max-content;background:var(--paper);border:1px solid var(--line);padding:18px}aside strong{display:block;font-size:.75rem;letter-spacing:.13em;color:var(--red);margin:0 0 9px}aside a{display:block;color:var(--muted);text-decoration:none;padding:5px 0;font-size:.9rem}aside a:hover{color:var(--navy)}main{min-width:0}section{background:var(--paper);border:1px solid var(--line);padding:30px;margin-bottom:22px}h2{font-size:1.5rem;line-height:1.3;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--line)}h3{font-size:1.08rem;margin:26px 0 8px}h4{font-size:.95rem;margin:16px 0 4px}p{margin:0 0 13px}.lead{font-size:1.05rem;color:#33465f}.callout{border-left:4px solid var(--navy);background:var(--blue-bg);padding:14px 16px;margin:17px 0}.callout.warning{border-color:var(--amber);background:var(--amber-bg)}.callout.danger{border-color:var(--red);background:var(--red-bg)}.callout.good{border-color:var(--green);background:var(--green-bg)}table{border-collapse:collapse;width:100%;font-size:.91rem;margin:13px 0 6px}th,td{border:1px solid var(--line);padding:10px 11px;vertical-align:top;text-align:left}th{background:#eef2f6;color:#273e5b;font-weight:650}code{font: .88em Consolas,"Cascadia Code",monospace;color:#64252c;background:#f4f1f1;padding:1px 4px;border-radius:2px}pre{overflow:auto;background:#172b45;color:#e7edf5;padding:16px;line-height:1.55;font-size:.84rem}ul,ol{padding-left:1.25rem;margin:8px 0 14px}.diagram{display:grid;gap:12px;text-align:center;margin:22px 0}.diagram .row{display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap}.node{padding:12px 16px;border:1px solid #c8d4e2;background:#fff;min-width:132px}.node.primary{background:#e8f0fa;border-color:#8faecc}.node.data{background:#eef7f2;border-color:#9bcbb8}.node.host{background:#fff6e5;border-color:#d9b66a}.arrow{color:#71829a;font-size:1.5rem}.flow{display:grid;grid-template-columns:repeat(5,minmax(110px,1fr));gap:10px;margin:16px 0}.step{position:relative;border:1px solid var(--line);padding:12px;background:#fff}.step b{display:block;color:var(--red);font:700 1.2rem Georgia,serif}.status{font-size:.78rem;font-weight:700;padding:2px 7px;border-radius:99px;white-space:nowrap}.implemented{color:#0e634c;background:#dff3eb}.partial{color:#765000;background:#fff1cc}.planned{color:#6a3976;background:#f2e9f5}.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}.small{font-size:.86rem;color:var(--muted)}.footer{color:var(--muted);font-size:.85rem;padding:20px 0 50px}.top{position:fixed;right:20px;bottom:20px;background:var(--navy);color:#fff;text-decoration:none;padding:8px 12px}@media(max-width:850px){.layout{grid-template-columns:1fr;padding-top:20px}aside{position:static;display:grid;grid-template-columns:repeat(2,1fr);gap:0 14px}.two{grid-template-columns:1fr}.flow{grid-template-columns:repeat(2,1fr)}}@media(max-width:560px){.shell{padding:0 16px}header{padding:34px 0}.hero h1{margin-top:28px}section{padding:20px}aside{grid-template-columns:1fr}.flow{grid-template-columns:1fr}table{font-size:.8rem}th,td{padding:7px}}
+  </style>
+</head>
+<body id="top">
+  <header>
+    <div class="shell hero">
+      <div class="brand"><span class="mark">J</span><div><b>Job Tracker</b><small>CAREER MANAGEMENT SYSTEM</small></div></div>
+      <h1>系统说明书</h1>
+      <p>面向个人求职管理的本地优先 Web 系统。以公司为行动容器，把职位进度、日程、待办、邮件与人工审核的 AI 建议收敛到同一个工作流中。</p>
+      <div class="meta"><span class="badge">文档版本 1.0</span><span class="badge">代码基线 2026-08-18</span><span class="badge">Django 5.2 LTS</span><span class="badge">部署形态：Windows + Docker</span></div>
+    </div>
+  </header>
+
+  <div class="shell layout">
+    <aside aria-label="目录"><strong>CONTENTS</strong><a href="#overview">1. 系统概述</a><a href="#requirements">2. 功能与业务流程</a><a href="#architecture">3. 技术架构</a><a href="#data">4. 数据设计</a><a href="#modules">5. 模块说明</a><a href="#security">6. 安全与隐私</a><a href="#operation">7. 部署与运行</a><a href="#quality">8. 测试与质量</a><a href="#limitations">9. 已知边界与演进</a></aside>
+
+    <main>
+      <section id="overview">
+        <h2>1. 系统概述</h2>
+        <p class="lead">Job Tracker 是一个单用户空间隔离的求职行动管理系统。它不是招聘平台，也不替用户投递或回复邮件；其职责是把求职过程中的信息、行动和时间安排变成可追踪、可审核的数据。</p>
+        <table><tr><th>项目</th><th>说明</th></tr><tr><td>目标用户</td><td>个人求职者；支持多个互相隔离的注册账户。</td></tr><tr><td>核心理念</td><td>公司优先、行动优先。用户通常在收到新邮件、临近截止日期或出现新日程时使用系统。</td></tr><tr><td>主工作区</td><td>行动中心首页：每家公司一张一级卡片，内部展示职位阶段、近期日程与未完成 To Do。</td></tr><tr><td>语言与时区</td><td>界面以简体中文为主；系统默认 <code>Asia/Tokyo</code>，用户可在个人资料中修改时区。</td></tr><tr><td>数据边界</td><td>业务数据保存在 MySQL；附件使用 Django Storage；Outlook 仅同步只读副本。</td></tr></table>
+        <div class="callout good"><b>设计约束：</b>AI 只能生成建议。任何日程、面试或 To Do 都必须经用户确认后才写入正式业务数据。</div>
+      </section>
+
+      <section id="requirements">
+        <h2>2. 功能与业务流程</h2>
+        <h3>2.1 主业务流程</h3>
+        <div class="flow"><div class="step"><b>01</b>建立公司<br><span class="small">仅公司名称必填</span></div><div class="step"><b>02</b>补充职位、日程、To Do<br><span class="small">支持一次性创建</span></div><div class="step"><b>03</b>通过五段状态推进职位<br><span class="small">保留投递历史</span></div><div class="step"><b>04</b>在行动中心处理近期事项<br><span class="small">置顶、排序、完成任务</span></div><div class="step"><b>05</b>查看日历与邮件审核结果<br><span class="small">人工确认 AI 候选</span></div></div>
+        <h3>2.2 五段求职阶段</h3>
+        <table><tr><th>行动中心阶段</th><th>底层含义</th><th>关键行为</th></tr><tr><td>未投递</td><td>没有 <code>Application</code> 记录</td><td>可直接进入调研、投递或面试中。</td></tr><tr><td>调查中</td><td><code>preparing</code></td><td>记录说明会、企业研究与材料准备。</td></tr><tr><td>已投递（ES）</td><td><code>applied</code>、<code>screening</code>、<code>assessment</code></td><td>保存投递日期、来源与适性检查。</td></tr><tr><td>面试中</td><td><code>interviewing</code></td><td>关联面试记录、准备笔记和复盘。</td></tr><tr><td>已结束</td><td>Offer、接受、拒绝、撤回、长期无回复或关闭</td><td>保留历史；可重新开始一条新的投递。</td></tr></table>
+        <h3>2.3 邮件到行动事项的受控流程</h3>
+        <div class="flow"><div class="step"><b>A</b>Windows Outlook 只读同步</div><div class="step"><b>B</b>本地规则筛选疑似行动邮件</div><div class="step"><b>C</b>千问生成日程 / To Do 候选</div><div class="step"><b>D</b>用户在邮件助手中修改、批准或拒绝</div><div class="step"><b>E</b>创建正式日程、面试或 To Do</div></div>
+        <div class="callout"><b>不可逆保护：</b>删除“已同步邮件”仅删除 Job Tracker 的 MySQL 副本；系统不会删除、发送、标记已读或修改 Outlook 原邮件。</div>
+      </section>
+
+      <section id="architecture">
+        <h2>3. 技术架构</h2>
+        <p>系统采用 Django 单体应用。前端使用 Django Templates、Bootstrap 5、HTMX 和少量原生 JavaScript；不依赖 Node.js 前端构建链。</p>
+        <div class="diagram" aria-label="系统架构图"><div class="row"><div class="node primary">浏览器<br><small>Bootstrap + HTMX</small></div><span class="arrow">⇄</span><div class="node primary">Django Web<br><small>认证、业务、模板</small></div><span class="arrow">⇄</span><div class="node data">MySQL 8.4<br><small>业务主数据</small></div></div><div class="row"><div class="node data">媒体存储<br><small>简历与文档</small></div><span class="arrow">⇄</span><div class="node primary">Celery<br><small>Worker + Beat</small></div><span class="arrow">⇄</span><div class="node data">Redis<br><small>Docker 任务 Broker</small></div></div><div class="row"><div class="node host">Windows Host Agent<br><small>出站认证通信</small></div><span class="arrow">⇄</span><div class="node host">Classic Outlook COM<br><small>只读同步</small></div><span class="arrow">⇄</span><div class="node host">Ollama / qwen3:8b<br><small>本地推理</small></div></div></div>
+        <table><tr><th>层次</th><th>职责</th><th>关键实现</th></tr><tr><td>表示层</td><td>表单、列表、局部更新与日历展示</td><td>Django Templates、Bootstrap、HTMX、FullCalendar</td></tr><tr><td>业务层</td><td>状态流转、行动中心聚合、审批、提醒规则</td><td>服务函数、数据库事务、对象级校验</td></tr><tr><td>异步层</td><td>提醒、清理、AI 任务、Host Agent 命令</td><td>Celery worker / beat；Windows 开发可使用 <code>--pool=solo</code></td></tr><tr><td>集成层</td><td>经典 Outlook 与仅本机监听的 Ollama</td><td>Windows Host Agent 领取命令后回传结果</td></tr><tr><td>数据层</td><td>关系数据、JSON 结果、文件元数据与私有文件</td><td>MySQL、Django ORM、Django Storage</td></tr></table>
+        <div class="callout warning"><b>运行形态说明：</b>Docker 容器不能直接访问 Windows Outlook COM 或仅监听 <code>127.0.0.1:11434</code> 的 Ollama。因此容器中的 Django 通过命令队列，由 Windows Host Agent 主动领取并执行这两类工作。</div>
+      </section>
+
+      <section id="data">
+        <h2>4. 数据设计</h2>
+        <h3>4.1 核心关系</h3>
+        <div class="diagram"><div class="row"><div class="node data">User</div><span class="arrow">1:1</span><div class="node data">Profile</div></div><div class="row"><div class="node data">User</div><span class="arrow">1:N</span><div class="node data">Company</div><span class="arrow">1:N</span><div class="node data">JobPosition</div><span class="arrow">1:N</span><div class="node data">Application</div><span class="arrow">1:N</span><div class="node data">Interview</div></div><div class="row"><div class="node data">Company</div><span class="arrow">1:N</span><div class="node data">CalendarEvent</div><span class="arrow">＋</span><div class="node data">TodoItem</div><span class="arrow">＋</span><div class="node data">Contact</div></div><div class="row"><div class="node data">EmailAccount</div><span class="arrow">1:N</span><div class="node data">SyncedEmail</div><span class="arrow">1:N</span><div class="node data">AI 候选 / 对话</div></div></div>
+        <h3>4.2 核心实体与约束</h3>
+        <table><tr><th>实体</th><th>作用</th><th>关键约束</th></tr><tr><td>Company</td><td>行动中心一级容器</td><td>同一用户下名称唯一；可归档；<code>pinned_order</code> 支持置顶排序。</td></tr><tr><td>JobPosition</td><td>公司下的职位与招聘信息</td><td>职位招聘状态与个人求职状态分离；薪资下限不得大于上限。</td></tr><tr><td>Application</td><td>一次求职尝试</td><td>同用户、同职位同一时刻仅允许一条非终止投递；结束后可再次申请。</td></tr><tr><td>ApplicationStatusLog</td><td>投递状态时间线</td><td>每次状态变更记录原状态、新状态、时间、说明与操作者。</td></tr><tr><td>CalendarEvent / Interview</td><td>正式时间事项</td><td>日程必须关联公司；已关联职位的面试使用 <code>Interview</code>，其他事项使用 <code>CalendarEvent</code>。</td></tr><tr><td>TodoItem</td><td>可执行行动</td><td>必须关联公司；可选关联职位、投递、来源邮件和操作链接。</td></tr><tr><td>SyncedEmail</td><td>邮箱本地只读副本</td><td>按“邮箱账户 + 提供方邮件 ID”去重；正文最多保存 50,000 字符。</td></tr><tr><td>AI 候选</td><td>邮件日程 / To Do 建议</td><td>版本化保存；批准或拒绝后保留记录；重复审批不重复创建正式对象。</td></tr></table>
+        <h3>4.3 数据保留与删除</h3>
+        <ul><li>有关联公司、职位、投递或日程的数据优先归档或保护删除，避免破坏历史。</li><li>未关联同步邮件最多保留 180 天，且每个邮箱最多保留最新 1,000 封；已关联邮件长期保留。</li><li>手动删除邮件会写入仅含邮件 ID 哈希的忽略标记，45 天内不会因再次同步而重新导入。</li><li>删除本地邮件副本时，正式 To Do 和日程保留；其来源邮件关联置空。</li></ul>
+      </section>
+
+      <section id="modules">
+        <h2>5. 模块说明</h2>
+        <table><tr><th>模块</th><th>实现状态</th><th>职责</th></tr><tr><td>账户与资料</td><td><span class="status implemented">已实现</span></td><td>自定义用户、注册登录、邮箱验证、密码流程、个人资料、时区与提醒偏好。</td></tr><tr><td>行动中心</td><td><span class="status implemented">已实现</span></td><td>公司卡片、职位五段状态、近期日程、To Do、置顶排序、快速新增。</td></tr><tr><td>公司 / 职位 / 投递</td><td><span class="status implemented">已实现</span></td><td>CRUD、筛选、归档、受保护删除、状态历史、投递看板与再次申请。</td></tr><tr><td>日历与提醒</td><td><span class="status implemented">已实现</span></td><td>月历 / 周历、面试、普通日程、截止与跟进图层、工作日空闲时段、站内通知和邮件提醒。</td></tr><tr><td>资料管理</td><td><span class="status implemented">已实现</span></td><td>联系人、简历、私有文档、沟通记录、标签；文件类型和 10 MB 大小限制。</td></tr><tr><td>本地 Outlook</td><td><span class="status partial">本机可用</span></td><td>经典 Outlook Inbox 只读同步、邮件查看、搜索、分页、手动关联、附件选择性导入与本地副本清理。</td></tr><tr><td>AI 职位分析</td><td><span class="status implemented">已实现</span></td><td>JD 结构化解析、简历匹配、结果版本化与选择性写入；本地 Ollama 默认，OpenAI 为可选项。</td></tr><tr><td>AI 邮件助手</td><td><span class="status implemented">已实现</span></td><td>单邮件对话、日程和 To Do 候选、编辑、批准、拒绝与“确认无事项”。</td></tr><tr><td>云端实时邮箱监听</td><td><span class="status planned">未实施</span></td><td>Microsoft Graph Webhook / Delta 同步仍是后续演进项，不属于当前经典 Outlook 本地同步实现。</td></tr></table>
+        <h3>5.1 主要路由</h3>
+        <table><tr><th>入口</th><th>用途</th></tr><tr><td><code>/dashboard/</code></td><td>行动中心首页。</td></tr><tr><td><code>/calendar/</code></td><td>统一日历、正式日程、面试、截止与空闲时间展示。</td></tr><tr><td><code>/email/messages/</code></td><td>本地同步邮件列表、搜索、分页和关联。</td></tr><tr><td><code>/ai/mail-assistant/</code></td><td>千问邮件审核工作台。</td></tr><tr><td><code>/companies/</code>、<code>/jobs/</code>、<code>/applications/</code></td><td>兼容保留的传统明细、列表、看板与历史入口。</td></tr><tr><td><code>/admin/</code></td><td>Django 管理后台，仅管理员可访问。</td></tr></table>
+      </section>
+
+      <section id="security">
+        <h2>6. 安全与隐私</h2>
+        <div class="two"><div><h3>已实施控制</h3><ul><li>业务查询按当前登录用户过滤；对象访问使用用户所有权校验。</li><li>修改接口使用 POST、CSRF 防护；HTMX 请求同样经过 Django 认证和 CSRF。</li><li>私有简历、文档下载前校验所有权；数据库仅保存文件路径和元数据，不保存二进制。</li><li>OpenAI API Key 使用独立 Fernet 密钥加密保存；页面只显示末四位，不写入日志。</li><li>云端简历匹配前去除明显邮箱和电话号码，并要求用户主动开启敏感数据授权。</li><li>Host Agent 使用 Bearer Token 认证；Docker 只读挂载令牌文件，不暴露 Outlook 或 Ollama 新端口。</li></ul></div><div><h3>使用边界</h3><ul><li>JD 与邮件正文都被视为不可信输入；AI 无浏览器、数据库、邮件发送或系统工具权限。</li><li>Ollama 仅监听本机 <code>127.0.0.1:11434</code>；容器通过 Host Agent 间接调用。</li><li>当前 Outlook 同步为经典桌面 Outlook 的只读模式，依赖 Windows 用户会话与 Outlook 登录状态。</li><li>生产部署必须关闭 <code>DEBUG</code>、设置强随机 <code>SECRET_KEY</code>、启用 HTTPS 和安全 Cookie。</li></ul></div></div>
+        <div class="callout danger"><b>生产风险提示：</b>当前 Docker 配置面向本地开发。若部署到公网，不能直接公开 MySQL、Redis、Docker daemon 或 Host Agent 接口；应使用反向代理仅暴露 HTTPS，并把密钥放在受保护的环境变量或密钥管理服务中。</div>
+      </section>
+
+      <section id="operation">
+        <h2>7. 部署与运行</h2>
+        <h3>7.1 本机开发模式</h3>
+        <p>项目虚拟环境、MySQL、Ollama 和运行状态均应保存在项目目录 <code>D:\New project</code> 下。PowerShell 执行策略受限时，使用单次 Bypass，而不要修改系统全局策略。</p>
+        <pre>powershell -ExecutionPolicy Bypass -File "D:\New project\scripts\start-all.ps1"</pre>
+        <h3>7.2 Docker 开发模式</h3>
+        <pre>cd "D:\New project"
+Copy-Item .env.docker.example .env.docker
+powershell -ExecutionPolicy Bypass -File .\scripts\docker-up.ps1</pre>
+        <table><tr><th>服务</th><th>作用</th><th>默认端口 / 持久化</th></tr><tr><td>web</td><td>Django Web</td><td>8000；媒体与静态文件 Volume</td></tr><tr><td>mysql</td><td>业务主数据库</td><td>主机 3307 → 容器 3306；MySQL Volume</td></tr><tr><td>redis</td><td>Docker 任务队列 / 结果后端</td><td>6379；Redis Volume</td></tr><tr><td>worker / beat</td><td>异步任务与定时调度</td><td>无公网端口</td></tr><tr><td>legacy-web</td><td>旧版 UI 对照环境</td><td>仅本机 8001；独立 <code>job_tracker_legacy</code> 数据库</td></tr></table>
+        <h3>7.3 Docker + Windows Host Agent</h3>
+        <pre>powershell -ExecutionPolicy Bypass -File "D:\New project\scripts\start-host-agent.ps1"
+powershell -ExecutionPolicy Bypass -File "D:\New project\scripts\start-ollama.ps1"</pre>
+        <p>Host Agent 启动后会向 Django 上报心跳，并领取 Outlook 同步或本地 Ollama 推理命令。代理离线时，已存业务数据和普通页面仍可用；仅 Outlook 同步与本地 AI 任务进入等待状态。</p>
+        <h3>7.4 备份与恢复建议</h3>
+        <ol><li>定期导出 MySQL 业务数据库，并加密保存到项目目录外的受控备份位置。</li><li>备份 <code>media/</code>、<code>.env</code>、Host Agent 本地配置和 MySQL dump；不要把这些内容提交到 Git。</li><li>恢复时先恢复同版本代码与依赖，再恢复数据库，最后恢复媒体文件并执行 <code>manage.py check</code>。</li><li>不要把两台机器的 MySQL 数据目录直接双向复制；应保持一个可写主库，使用导出 / 导入或明确的同步流程。</li></ol>
+      </section>
+
+      <section id="quality">
+        <h2>8. 测试与质量保证</h2>
+        <p>系统修改遵循“模型设计 → 迁移 → 功能测试 → 系统检查 → 回归”的顺序。涉及数据模型的变更，先更新 <code>docs/data-model.md</code>，再生成迁移。</p>
+        <pre>.\.venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\.venv\Scripts\python.exe manage.py check
+.\.venv\Scripts\python.exe manage.py test --keepdb</pre>
+        <table><tr><th>测试层次</th><th>重点覆盖</th></tr><tr><td>模型与服务</td><td>公司 / 职位 / 投递状态约束、重复活动投递、事务性状态历史、候选审批幂等。</td></tr><tr><td>权限</td><td>跨用户 URL 访问返回 404；文件下载、邮件、AI 任务和候选均检查所有权。</td></tr><tr><td>集成</td><td>Outlook 邮件去重、忽略标记、保留策略、Host Agent 命令领取与回传。</td></tr><tr><td>时间相关</td><td>Japan 时区、日历范围、提醒幂等、面试取消 / 改期、工作日空闲时段计算。</td></tr><tr><td>人工验收</td><td>桌面与手机宽度、复合新增表单、AI 审核卡片、Docker 服务状态和本机 Host Agent 心跳。</td></tr></table>
+      </section>
+
+      <section id="limitations">
+        <h2>9. 已知边界与演进方向</h2>
+        <table><tr><th>主题</th><th>当前边界</th><th>建议后续方向</th></tr><tr><td>邮件实时性</td><td>当前依赖经典 Outlook + Host Agent；电脑休眠、Outlook 未登录或代理离线时无法即时同步。</td><td>在服务器侧引入 Microsoft Graph OAuth、Webhook 与 Delta Query；Webhook 仅通知，增量同步负责恢复遗漏。</td></tr><tr><td>AI 本地运行</td><td>本地 Ollama 受显存、模型能力和 Windows 进程状态影响；任务会等待 Host Agent。</td><td>保留本地优先，并允许用户选择经授权的 OpenAI；为失败任务增加更清晰的重试与恢复界面。</td></tr><tr><td>多用户协作</td><td>当前是个人用户空间模型，不包含团队、组织、共享岗位或审批角色。</td><td>若扩展团队功能，应先引入 Workspace / Membership 边界，而非直接共享现有用户数据。</td></tr><tr><td>公网部署</td><td>当前 Compose 使用 Django 开发服务器，适合本机开发与演示。</td><td>生产采用 Gunicorn / Uvicorn、Nginx 或 Caddy、HTTPS、受限网络、备份与监控。</td></tr><tr><td>AI 自动化</td><td>系统不自动批准候选、不自动投递、不自动回复邮件、不回写 Outlook。</td><td>继续保持人工审核闸门；新增自动化前应先做权限、审计和撤销设计。</td></tr></table>
+        <div class="callout"><b>版本说明：</b>本说明书描述的是当前“新版行动中心”代码，不把独立运行在 <code>127.0.0.1:8001</code> 的旧版 UI 对照环境视为正式业务模块。</div>
+      </section>
+
+      <div class="footer">Job Tracker System Manual · 本文档依据当前项目代码、配置与设计文档编写。涉及外部服务账号、生产域名和密钥的内容均应由部署负责人单独配置。</div>
+    </main>
+  </div>
+  <a class="top" href="#top">↑ 顶部</a>
+</body>
+</html>

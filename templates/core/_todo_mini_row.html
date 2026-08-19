@@ -1,0 +1,16 @@
+<div id="todo-mini-{{ todo.pk }}" class="todo-mini-row{% if todo.status == 'done' %} is-done{% endif %}">
+  <form method="post" action="{% url 'core:todo-toggle' todo.pk %}"
+        hx-post="{% url 'core:todo-toggle' todo.pk %}"
+        hx-target="#todo-mini-{{ todo.pk }}" hx-swap="outerHTML">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url 'core:dashboard' %}#company-{{ card_company_id }}">
+    <input type="hidden" name="card_company_id" value="{{ card_company_id }}">
+    <button class="todo-check" title="{% if todo.status == 'done' %}重新打开{% else %}标记完成{% endif %}">{% if todo.status == 'done' %}●{% else %}○{% endif %}</button>
+  </form>
+  <a href="{% url 'core:todo-edit' todo.pk %}?next=/dashboard/%23company-{{ card_company_id }}">
+    <strong>{{ todo.title }}</strong>
+    <span class="priority-{{ todo.priority }}">{{ todo.get_priority_display }}</span>
+    {% if todo.job_position %}<small>{{ todo.job_position.title }}</small>{% endif %}
+    {% if todo.due_at %}<time{% if todo.due_at < now and todo.status != 'done' %} class="overdue-text"{% endif %}>{{ todo.due_at|date:'m/d H:i' }}</time>{% endif %}
+  </a>
+</div>

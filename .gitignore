@@ -17,9 +17,13 @@ celerybeat-schedule*
 .env
 .env.*
 !.env.example
+!.env.docker.example
 
 # Editors and operating systems
 .idea/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Agent workspace (PPT/working files — stay local, not part of the project)
+.workbuddy/

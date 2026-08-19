@@ -1,0 +1,33 @@
+<div id="job-pipeline-{{ job.pk }}" class="job-pipeline-row">
+  <div class="job-main">
+    <a href="{% url 'companies:job-detail' job.pk %}"><strong>{{ job.title }}</strong></a>
+    <span>{{ job.get_status_display }}</span>
+    {% if job.pipeline_outcome_label %}<span class="outcome-label">{{ job.pipeline_outcome_label }}</span>{% endif %}
+  </div>
+  <form class="pipeline-form" method="post"
+        hx-post="{% url 'jobs:pipeline-status' job.pk %}"
+        hx-target="#job-pipeline-{{ job.pk }}" hx-swap="outerHTML"
+        data-current-rank="{% if job.pipeline_stage == 'unapplied' %}0{% elif job.pipeline_stage == 'researching' %}1{% elif job.pipeline_stage == 'applied' %}2{% elif job.pipeline_stage == 'interviewing' %}3{% else %}4{% endif %}">
+    {% csrf_token %}
+    <input type="hidden" name="backward_confirmed" value="no">
+    <input type="hidden" name="note" value="">
+    <div class="pipeline-segments" aria-label="求职阶段">
+      {% for value,label in pipeline_stages %}
+        <input class="pipeline-radio" type="radio" name="stage" value="{{ value }}"
+               id="pipeline-{{ job.pk }}-{{ value }}" data-rank="{{ forloop.counter0 }}"
+               {% if job.pipeline_stage == value %}checked{% endif %}>
+        <label for="pipeline-{{ job.pk }}-{{ value }}">{{ label }}</label>
+      {% endfor %}
+    </div>
+    <div class="pipeline-submit">
+      <select class="form-select form-select-sm ended-outcome" name="outcome" aria-label="结束结果">
+        <option value="">选择结束结果</option>
+        {% for value,label in ended_outcomes %}
+          <option value="{{ value }}" {% if job.pipeline_application and job.pipeline_application.status == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn btn-sm btn-outline-primary">保存状态</button>
+    </div>
+  </form>
+  {% if job.pipeline_application %}<a class="history-link" href="{% url 'applications:detail' job.pipeline_application.pk %}">查看历史</a>{% endif %}
+</div>

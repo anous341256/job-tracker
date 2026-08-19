@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}邮件助手 · Job Tracker{% endblock %}
+{% block content %}
+<div class="page-heading mail-assistant-heading">
+  <div><span class="eyebrow">QWEN MAIL REVIEW</span><h1>千问邮件助手</h1><p>一次检查一封邮件。AI只生成日程和 To Do 建议，确认后才会写入系统。</p></div>
+</div>
+<div class="mail-mobile-tabs" aria-label="邮件助手区域">
+  <button type="button" class="active" data-mail-pane="queue">邮件</button>
+  <button type="button" data-mail-pane="message">正文</button>
+  <button type="button" data-mail-pane="assistant">千问</button>
+</div>
+<div class="mail-assistant-shell" data-active-pane="queue">
+  <aside class="mail-queue-pane">
+    <form method="get" class="mail-queue-filter">
+      <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="搜索主题、发件人或正文">
+      <select name="status" class="form-select" onchange="this.form.submit()">
+        <option value="pending" {% if review_filter == 'pending' %}selected{% endif %}>待处理</option>
+        <option value="needs_info" {% if review_filter == 'needs_info' %}selected{% endif %}>需要补充</option>
+        <option value="candidate" {% if review_filter == 'candidate' %}selected{% endif %}>已有候选</option>
+        <option value="completed" {% if review_filter == 'completed' %}selected{% endif %}>已完成</option>
+      </select>
+      <button class="btn btn-outline-primary w-100">筛选</button>
+    </form>
+    <div class="mail-queue-list">
+      {% for email in email_queue %}
+        <a class="mail-queue-item {% if selected_email.pk == email.pk %}active{% endif %}"
+           href="{% url 'ai_assistant:mail-assistant' %}?email={{ email.pk }}&status={{ review_filter }}&q={{ query|urlencode }}"
+           hx-get="{% url 'ai_assistant:mail-assistant-email' email.pk %}" hx-target="#mail-assistant-detail"
+           hx-swap="outerHTML" hx-push-url="{% url 'ai_assistant:mail-assistant' %}?email={{ email.pk }}&status={{ review_filter }}&q={{ query|urlencode }}">
+          <span class="mail-queue-sender">{{ email.sender }}</span>
+          <strong>{{ email.subject|default:'（无主题）' }}</strong>
+          <small>{{ email.received_at|date:'m月d日 H:i' }}{% if email.company %} · {{ email.company.name }}{% endif %}</small>
+        </a>
+      {% empty %}<p class="empty-state m-3">当前筛选下没有邮件。</p>{% endfor %}
+    </div>
+  </aside>
+  {% if selected_email %}{% include 'ai_assistant/_mail_assistant_detail.html' %}{% else %}{% include 'ai_assistant/_mail_assistant_empty.html' %}{% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function activateMailPane(name) {
+  const shell = document.querySelector('.mail-assistant-shell');
+  if (!shell) return;
+  shell.dataset.activePane = name;
+  document.querySelectorAll('[data-mail-pane]').forEach(button => button.classList.toggle('active', button.dataset.mailPane === name));
+}
+document.addEventListener('click', event => {
+  const tab = event.target.closest('[data-mail-pane]');
+  if (tab) activateMailPane(tab.dataset.mailPane);
+  if (event.target.closest('.mail-queue-item') && window.matchMedia('(max-width: 991px)').matches) activateMailPane('message');
+});
+document.addEventListener('htmx:afterSwap', event => {
+  if (event.detail.target.id === 'mail-assistant-detail' && window.matchMedia('(max-width: 991px)').matches) activateMailPane('message');
+});
+</script>
+{% endblock %}

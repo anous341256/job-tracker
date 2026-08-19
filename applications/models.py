@@ -88,7 +88,10 @@ class Application(models.Model):
 
     def clean(self):
         super().clean()
-        terminal = {self.Status.ACCEPTED, self.Status.REJECTED, self.Status.WITHDRAWN, self.Status.CLOSED}
+        terminal = {
+            self.Status.OFFER, self.Status.ACCEPTED, self.Status.REJECTED,
+            self.Status.WITHDRAWN, self.Status.GHOSTED, self.Status.CLOSED,
+        }
         if self.user_id and self.job_position_id and self.status not in terminal:
             duplicate = Application.objects.filter(user_id=self.user_id, job_position_id=self.job_position_id).exclude(status__in=terminal)
             if self.pk: duplicate = duplicate.exclude(pk=self.pk)

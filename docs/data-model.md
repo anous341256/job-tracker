@@ -40,7 +40,8 @@
 ### JobPosition
 
 - 归属：`company`
-- 核心字段：`title`、`department`、`status`、`description`、`source_url`、`application_deadline`、`published_at`、`location`、`work_mode`、`employment_type`、薪资结构字段、`requirements`、`benefits`、`notes`
+- 核心字段：`title`、`category`、`category_other`、`department`、`status`、`description`、`source_url`、`application_deadline`、`published_at`、`location`、`work_mode`、`employment_type`、薪资结构字段、`requirements`、`benefits`、`notes`
+- 职位类别：`technical`、`general`、`consulting`、`sales`、`planning`、`design`、`other`；选择 `other` 时必须填写 `category_other`。
 - 状态：`draft`、`open`、`closed`、`expired`、`filled`、`unknown`
 - 办公方式：`onsite`、`hybrid`、`remote`、`unknown`
 - 薪资拆为 `salary_min`、`salary_max`、`salary_currency`、`salary_period`，不保存为单一展示字符串。
@@ -82,4 +83,44 @@
 - 已产生投递的职位应阻止直接删除。
 - 删除投递时，状态历史和面试记录可随之级联删除。
 - 用户删除时，其私人业务数据随之删除；执行前必须提供明确确认和数据导出提示。
+## Action center additions
 
+### Company pinning
+
+- `Company.pinned_order` is nullable. `NULL` means the dashboard calculates the company's position from overdue work, next action, priority, and update time.
+- Non-null values form the manually ordered pinned group. Reordering is always scoped to the current user.
+
+### TodoItem
+
+- Ownership: `user`; required container: `company`.
+- Optional context: `job_position` and `application`.
+- Core fields: `title`, `status`, `priority`, `due_at`, `notes`, and `completed_at`.
+- AI-created tasks may retain optional `source_email` and `source_url`; deleting the local email copy sets `source_email` to null without deleting the task.
+- A task's company, job, and application must belong to the same signed-in user and company.
+
+### CalendarEvent
+
+- Ownership: `user`; required container: `company`.
+- Optional context: `job_position`, `application`, `contact`, and `source_email`.
+- Types: `briefing`, `es_deadline`, `assessment`, `interview`, `call`, and `other`.
+- An interview with a selected job is stored as an `Interview`; a company-level interview without a job remains a `CalendarEvent`.
+
+### Five-stage dashboard pipeline
+
+The dashboard presents existing application records through a compatibility layer:
+
+| Dashboard stage | Stored application status |
+| --- | --- |
+| Unapplied | No application record |
+| Researching | `preparing` |
+| Applied / ES | `applied`, `screening`, or `assessment` |
+| Interviewing | `interviewing` |
+| Ended | `offer`, `accepted`, `rejected`, `withdrawn`, `ghosted`, or `closed` |
+
+Every transition is transactional and creates an `ApplicationStatusLog`. Restarting after an ended attempt creates a new application and preserves the old history.
+
+# Email retention
+
+`SyncedEmail` stores a bounded local copy for search and business linking. Messages are unique per mailbox and provider message ID. Linked messages are retained; unlinked messages expire after 180 days and are capped at 1,000 per mailbox. `DeletedEmailMarker` stores only a SHA-256 message identifier and a 45-day expiry to prevent manually deleted copies from immediately returning during synchronization.
+
+`EmailTodoCandidate` stores versioned AI suggestions for resume submissions, document uploads, assessments, forms, replies, scheduling, and follow-ups. It is separate from `EmailScheduleCandidate` so an optional task deadline is not confused with a calendar start time. Both candidate types must be reviewed before creating formal records.

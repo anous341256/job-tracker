@@ -1,0 +1,187 @@
+services:
+  web:
+    build:
+      context: .
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: job_tracker
+      DB_USER: job_tracker
+      DB_PASSWORD: job_tracker_dev_password
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ALLOWED_HOSTS: 127.0.0.1,localhost,web
+      DEBUG: "True"
+      RUN_MIGRATIONS: "1"
+      RUN_COLLECTSTATIC: "1"
+      HOST_AGENT_ENABLED: "True"
+      HOST_AGENT_TOKEN_FILE: /run/jobtracker-host-agent/token
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - staticfiles_data:/app/staticfiles
+      - ./.local/host-agent:/run/jobtracker-host-agent:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: .
+    command: celery -A config worker --loglevel=info --pool=solo
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: job_tracker
+      DB_USER: job_tracker
+      DB_PASSWORD: job_tracker_dev_password
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DEBUG: "True"
+      RUN_MIGRATIONS: "0"
+      RUN_COLLECTSTATIC: "0"
+      WAIT_FOR_MIGRATIONS: "1"
+      HOST_AGENT_ENABLED: "True"
+      HOST_AGENT_TOKEN_FILE: /run/jobtracker-host-agent/token
+    volumes:
+      - .:/app
+      - media_data:/app/media
+      - ./.local/host-agent:/run/jobtracker-host-agent:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  beat:
+    build:
+      context: .
+    command: celery -A config beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    env_file:
+      - path: .env.docker
+        required: false
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: job_tracker
+      DB_USER: job_tracker
+      DB_PASSWORD: job_tracker_dev_password
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      DEBUG: "True"
+      RUN_MIGRATIONS: "0"
+      RUN_COLLECTSTATIC: "0"
+      WAIT_FOR_MIGRATIONS: "1"
+      HOST_AGENT_ENABLED: "True"
+      HOST_AGENT_TOKEN_FILE: /run/jobtracker-host-agent/token
+    volumes:
+      - .:/app
+      - ./.local/host-agent:/run/jobtracker-host-agent:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  legacy-db-init:
+    image: mysql:8.4
+    environment:
+      MYSQL_PWD: root_dev_password
+    command:
+      - sh
+      - -c
+      - >-
+        mysql -h mysql -uroot -e
+        "CREATE DATABASE IF NOT EXISTS job_tracker_legacy
+        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+        CREATE USER IF NOT EXISTS 'job_tracker_legacy'@'%'
+        IDENTIFIED BY 'job_tracker_legacy_dev_password';
+        ALTER USER 'job_tracker_legacy'@'%'
+        IDENTIFIED BY 'job_tracker_legacy_dev_password';
+        GRANT ALL PRIVILEGES ON job_tracker_legacy.*
+        TO 'job_tracker_legacy'@'%'; FLUSH PRIVILEGES;"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: "no"
+
+  legacy-web:
+    build:
+      context: ../job-tracker-old-ui
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file:
+      - path: ../job-tracker-old-ui/.env.docker.local
+        required: true
+    environment:
+      DB_ENGINE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: job_tracker_legacy
+      DB_TEST_NAME: test_job_tracker_legacy
+      DB_USER: job_tracker_legacy
+      DB_PASSWORD: job_tracker_legacy_dev_password
+      RUN_MIGRATIONS: "1"
+      RUN_COLLECTSTATIC: "1"
+      CREATE_DEMO_USER: "1"
+    ports:
+      - "127.0.0.1:8001:8000"
+    volumes:
+      - ../job-tracker-old-ui:/app
+      - legacy_media_data:/app/media
+      - legacy_staticfiles_data:/app/staticfiles
+    depends_on:
+      legacy-db-init:
+        condition: service_completed_successfully
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: job_tracker
+      MYSQL_USER: job_tracker
+      MYSQL_PASSWORD: job_tracker_dev_password
+      MYSQL_ROOT_PASSWORD: root_dev_password
+      TZ: Asia/Tokyo
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+09:00
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/mysql-init-test-db.sql:/docker-entrypoint-initdb.d/10-test-database.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
+  media_data:
+  staticfiles_data:
+  legacy_media_data:
+  legacy_staticfiles_data:

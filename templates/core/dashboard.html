@@ -1,1 +1,49 @@
-{% extends 'base.html' %}{% block content %}<div class="d-flex justify-content-between"><h1>仪表盘</h1><a class="btn btn-primary" href="{% url 'applications:create' %}">新建投递</a></div><div class="row g-3 my-2"><div class="col-md-3"><div class="card p-3"><div class="text-muted">总投递</div><div class="display-6">{{ application_count }}</div></div></div><div class="col-md-3"><div class="card p-3"><div class="text-muted">进入后续流程</div><div class="display-6">{{ interview_conversion }}%</div></div></div><div class="col-md-3"><div class="card p-3"><div class="text-muted">Offer 转化</div><div class="display-6">{{ offer_conversion }}%</div></div></div><div class="col-md-3"><div class="card p-3"><div class="text-muted">未读通知</div><div class="display-6">{{ unread_count }}</div></div></div></div><div class="row g-3 my-4"><div class="col-md-6"><div class="card p-3"><canvas id="sourceChart"></canvas></div></div><div class="col-md-6"><div class="card p-3"><canvas id="monthlyChart"></canvas></div></div></div><div class="row g-4"><section class="col-lg-4"><h2 class="h4">近期面试</h2>{% for x in upcoming_interviews %}<div class="card mb-2 p-2">{{ x.scheduled_at }} · {{ x.title }}</div>{% empty %}<p class="text-muted">暂无面试</p>{% endfor %}</section><section class="col-lg-4"><h2 class="h4">即将截止</h2>{% for x in deadlines %}<div class="card mb-2 p-2">{{ x.application_deadline }} · {{ x.company }} {{ x.title }}</div>{% empty %}<p class="text-muted">暂无截止职位</p>{% endfor %}</section><section class="col-lg-4"><h2 class="h4">需要跟进</h2>{% for x in follow_ups %}<div class="card mb-2 p-2"><a href="{% url 'applications:detail' x.pk %}">{{ x }}</a></div>{% empty %}<p class="text-muted">暂无待办</p>{% endfor %}</section></div>{{ source_chart|json_script:'source-data' }}{{ monthly_chart|json_script:'monthly-data' }}{% endblock %}{% block scripts %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script><script>const s=JSON.parse(document.getElementById('source-data').textContent),m=JSON.parse(document.getElementById('monthly-data').textContent);new Chart(document.getElementById('sourceChart'),{type:'doughnut',data:{labels:s.labels,datasets:[{data:s.values}]},options:{plugins:{title:{display:true,text:'投递来源'}}}});new Chart(document.getElementById('monthlyChart'),{type:'bar',data:{labels:m.labels,datasets:[{label:'投递数',data:m.values}]},options:{plugins:{title:{display:true,text:'每月投递趋势'}}}})</script>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<div class="action-center-heading">
+  <div><span class="eyebrow">ACTION CENTER</span><h1>求职行动中心</h1><p>公司、选考日程和下一步行动，都集中在这里。</p></div>
+  <div class="action-summary">
+    <a href="{% url 'core:todos' %}"><strong>{{ open_todo_count }}</strong><span>未完成 To Do</span></a>
+    <a href="{% url 'core:notifications' %}"><strong>{{ unread_count }}</strong><span>未读通知</span></a>
+  </div>
+</div>
+
+<form id="pinned-order-form" class="d-none">{% csrf_token %}</form>
+<div id="company-action-list">
+  {% for card in company_cards %}{% include 'core/_company_action_card.html' %}{% empty %}
+  <section class="empty-action-center">
+    <span class="eyebrow">START HERE</span><h2>先记录第一家公司</h2><p>只填写公司名称也能保存，职位和日程都可以以后再补。</p>
+    <a class="btn btn-primary" href="{% url 'companies:create' %}">＋ 添加公司</a>
+  </section>
+  {% endfor %}
+</div>
+
+<div class="quick-create dropdown dropup">
+  <button class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">＋ 新增</button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><a class="dropdown-item" href="{% url 'companies:create' %}">公司与行动</a></li>
+    <li><a class="dropdown-item" href="{% url 'core:calendar-event-create' %}">日程</a></li>
+    <li><a class="dropdown-item" href="{% url 'core:todo-create' %}">To Do</a></li>
+  </ul>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+let dragged = null;
+document.querySelectorAll('.company-card[data-pinned="true"]').forEach(card => {
+  card.draggable = true;
+  card.addEventListener('dragstart', () => { dragged = card; card.classList.add('dragging'); });
+  card.addEventListener('dragend', async () => {
+    card.classList.remove('dragging'); dragged = null;
+    const ids = [...document.querySelectorAll('.company-card[data-pinned="true"]')].map(x => x.dataset.companyId);
+    const body = new FormData(document.getElementById('pinned-order-form'));
+    ids.forEach(id => body.append('company_ids', id));
+    await fetch('{% url "companies:reorder-pinned" %}', {method:'POST', body, headers:{'HX-Request':'true'}});
+  });
+  card.addEventListener('dragover', event => {
+    event.preventDefault();
+    if (dragged && dragged !== card) card.parentNode.insertBefore(dragged, card);
+  });
+});
+</script>
+{% endblock %}

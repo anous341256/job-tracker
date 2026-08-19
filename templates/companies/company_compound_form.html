@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-heading">
+  <div><span class="eyebrow">NEW COMPANY</span><h1>一次建立公司与行动</h1><p>只需要公司名称。职位、日程和 To Do 都可以留空或一次添加多条。</p></div>
+</div>
+<form method="post" class="compound-create" novalidate>{% csrf_token %}
+  <section class="content-panel mb-4">
+    <span class="step-number">01</span><h2>公司</h2>
+    {{ company_form.non_field_errors }}
+    <div class="mb-3"><label class="form-label" for="{{ company_form.name.id_for_label }}">公司名称 <span class="required-mark">必填</span></label>{{ company_form.name }}{{ company_form.name.errors }}</div>
+    <details class="optional-details">
+      <summary>更多公司信息（可选）</summary>
+      <div class="row g-3 mt-1">
+        {% for field in company_form %}{% if field.name != 'name' %}<div class="col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}
+      </div>
+    </details>
+  </section>
+
+  <section class="content-panel mb-4 formset-section" data-formset="jobs">
+    <div class="section-heading"><div><span class="step-number">02</span><h2>职位 <small>可选</small></h2></div><button class="btn btn-outline-primary add-form" type="button">＋添加职位</button></div>
+    {{ job_forms.management_form }}{{ job_forms.non_form_errors }}
+    <div class="formset-list">
+      {% for form in job_forms %}<div class="nested-form job-form" data-form-index="{{ forloop.counter0 }}">
+        <div class="nested-form-head"><strong>职位 {{ forloop.counter }}</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>
+        {{ form.DELETE.as_hidden }}{{ form.non_field_errors }}
+        <div class="row g-3">{% for field in form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-{% if field.name == 'description' %}12{% else %}6{% endif %}"><label class="form-label">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div>
+      </div>{% endfor %}
+    </div>
+    <template class="empty-form"><div class="nested-form job-form" data-form-index="__prefix__"><div class="nested-form-head"><strong>新职位</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>{{ job_forms.empty_form.DELETE.as_hidden }}<div class="row g-3">{% for field in job_forms.empty_form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-{% if field.name == 'description' %}12{% else %}6{% endif %}"><label class="form-label">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div></div></template>
+  </section>
+
+  <section class="content-panel mb-4 formset-section" data-formset="schedules">
+    <div class="section-heading"><div><span class="step-number">03</span><h2>日程 <small>可选</small></h2></div><button class="btn btn-outline-primary add-form" type="button">＋添加日程</button></div>
+    {{ schedule_forms.management_form }}{{ schedule_forms.non_form_errors }}
+    <div class="formset-list">{% for form in schedule_forms %}<div class="nested-form"><div class="nested-form-head"><strong>日程 {{ forloop.counter }}</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>{{ form.DELETE.as_hidden }}{{ form.non_field_errors }}<div class="row g-3">{% for field in form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-6"><label class="form-label">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div></div>{% endfor %}</div>
+    <template class="empty-form"><div class="nested-form"><div class="nested-form-head"><strong>新日程</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>{{ schedule_forms.empty_form.DELETE.as_hidden }}<div class="row g-3">{% for field in schedule_forms.empty_form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-6"><label class="form-label">{{ field.label }}</label>{{ field }}</div>{% endif %}{% endfor %}</div></div></template>
+  </section>
+
+  <section class="content-panel mb-4 formset-section" data-formset="todos">
+    <div class="section-heading"><div><span class="step-number">04</span><h2>To Do <small>可选</small></h2></div><button class="btn btn-outline-primary add-form" type="button">＋添加 To Do</button></div>
+    {{ todo_forms.management_form }}{{ todo_forms.non_form_errors }}
+    <div class="formset-list">{% for form in todo_forms %}<div class="nested-form"><div class="nested-form-head"><strong>To Do {{ forloop.counter }}</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>{{ form.DELETE.as_hidden }}{{ form.non_field_errors }}<div class="row g-3">{% for field in form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-{% if field.name == 'notes' %}12{% else %}6{% endif %}"><label class="form-label">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endif %}{% endfor %}</div></div>{% endfor %}</div>
+    <template class="empty-form"><div class="nested-form"><div class="nested-form-head"><strong>新 To Do</strong><button type="button" class="btn-link-danger remove-form">移除</button></div>{{ todo_forms.empty_form.DELETE.as_hidden }}<div class="row g-3">{% for field in todo_forms.empty_form.visible_fields %}{% if field.name != 'DELETE' %}<div class="col-md-{% if field.name == 'notes' %}12{% else %}6{% endif %}"><label class="form-label">{{ field.label }}</label>{{ field }}</div>{% endif %}{% endfor %}</div></div></template>
+  </section>
+  <div class="sticky-submit"><a class="btn btn-outline-secondary" href="{% url 'core:dashboard' %}">取消</a><button class="btn btn-primary btn-lg">保存公司与行动</button></div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  function refreshJobChoices() {
+    const jobs = [...document.querySelectorAll('.job-form')].filter(x => x.style.display !== 'none').map(form => ({
+      index: form.dataset.formIndex,
+      title: form.querySelector('input[name$="-title"]')?.value.trim()
+    })).filter(x => x.title);
+    document.querySelectorAll('select[name$="-job_index"]').forEach(select => {
+      const current = select.value;
+      select.replaceChildren(new Option('不关联职位', ''));
+      jobs.forEach(job => select.add(new Option(job.title, job.index)));
+      select.value = current;
+    });
+  }
+  document.querySelectorAll('.formset-section').forEach(section => {
+    const prefix = section.dataset.formset;
+    const total = section.querySelector(`#id_${prefix}-TOTAL_FORMS`);
+    section.querySelector('.add-form').addEventListener('click', () => {
+      const index = Number(total.value);
+      const html = section.querySelector('.empty-form').innerHTML.replaceAll('__prefix__', index);
+      section.querySelector('.formset-list').insertAdjacentHTML('beforeend', html);
+      total.value = index + 1;
+      bind(section.querySelector('.formset-list').lastElementChild);
+      refreshJobChoices();
+    });
+  });
+  function bind(form) {
+    form.querySelector('.remove-form')?.addEventListener('click', () => {
+      const deletion = form.querySelector('input[name$="-DELETE"]');
+      if (deletion) deletion.value = 'on';
+      form.style.display = 'none';
+      refreshJobChoices();
+    });
+    form.querySelector('input[name$="-title"]')?.addEventListener('input', refreshJobChoices);
+  }
+  document.querySelectorAll('.nested-form').forEach(bind);
+  refreshJobChoices();
+})();
+</script>
+{% endblock %}

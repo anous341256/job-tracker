@@ -17,22 +17,29 @@ Including another URLconf
 from django.contrib import admin
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib.auth.decorators import login_required
 from django.urls import include, path
 from django.views.generic import RedirectView, TemplateView
+from core import host_agent
 
 urlpatterns = [
+    path('internal/host-agent/heartbeat/', host_agent.heartbeat),
+    path('internal/host-agent/claim/', host_agent.claim),
+    path('internal/host-agent/commands/<int:pk>/complete/', host_agent.complete),
     path('', RedirectView.as_view(pattern_name='core:dashboard', permanent=False)),
     path('admin/', admin.site.urls),
     path('accounts/', include('accounts.urls')),
     path('accounts/', include('allauth.urls')),
     path('', include('core.urls')),
     path('companies/', include('companies.urls')),
+    path('jobs/', include('ai_assistant.job_urls')),
     path('jobs/', include('companies.job_urls')),
     path('applications/', include('applications.urls')),
     path('interviews/', __import__('applications.views', fromlist=['InterviewListView']).InterviewListView.as_view(), name='interviews'),
-    path('calendar/', TemplateView.as_view(template_name='core/calendar.html'), name='calendar'),
+    path('calendar/', login_required(TemplateView.as_view(template_name='core/calendar.html')), name='calendar'),
     path('', include('productivity.urls')),
     path('email/', include('mailboxes.urls')),
+    path('ai/', include('ai_assistant.urls')),
 ]
 
 if settings.DEBUG:

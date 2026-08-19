@@ -1,0 +1,103 @@
+<article id="company-{{ card.company.pk }}"
+         class="company-card{% if card.has_overdue %} has-overdue{% endif %}"
+         data-company-id="{{ card.company.pk }}"
+         data-pinned="{% if card.company.pinned_order != None %}true{% else %}false{% endif %}">
+  <details {% if not card.collapsed %}open{% endif %}>
+    <summary class="company-card-head">
+      <div class="company-identity">
+        {% if card.company.pinned_order != None %}
+          <span class="drag-handle" title="拖动调整置顶公司顺序">⠿</span>
+        {% endif %}
+        <div>
+          <span class="company-kicker">{{ card.company.get_priority_display }}优先级 · {{ card.stage_label }}</span>
+          <h2>{{ card.company.name }}</h2>
+        </div>
+      </div>
+      <div class="company-next">
+        {% if card.has_overdue %}<span class="overdue-flag">有逾期事项</span>{% endif %}
+        {% if card.next_action_at %}
+          <span>下一项 {{ card.next_action_at|date:'m月d日 H:i' }}</span>
+        {% else %}
+          <span>暂无近期行动</span>
+        {% endif %}
+        <span class="collapse-icon">⌄</span>
+      </div>
+    </summary>
+
+    <div class="company-card-body">
+      <div class="company-toolbar">
+        <div class="quick-links">
+          <a href="{% url 'companies:detail' card.company.pk %}">公司详情</a>
+          <a href="{% url 'companies:edit' card.company.pk %}">编辑</a>
+          <a href="{% url 'companies:job-create' %}?company={{ card.company.pk }}">＋职位</a>
+          <a href="{% url 'core:calendar-event-create' %}?company={{ card.company.pk }}">＋日程</a>
+          <a href="{% url 'core:todo-create' %}?company={{ card.company.pk }}">＋To Do</a>
+        </div>
+        <form method="post" action="{% url 'companies:pin' card.company.pk %}">
+          {% csrf_token %}
+          <button class="pin-button">{% if card.company.pinned_order != None %}取消置顶{% else %}置顶公司{% endif %}</button>
+        </form>
+      </div>
+
+      <section class="company-section">
+        <div class="section-label"><span>POSITIONS</span><strong>职位与选考</strong></div>
+        <div class="pipeline-list">
+          {% for job in card.jobs %}
+            {% include 'core/_job_pipeline_row.html' %}
+          {% empty %}
+            <div class="section-empty">尚未添加职位。<a href="{% url 'companies:job-create' %}?company={{ card.company.pk }}">添加职位</a></div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="company-action-grid">
+        <section class="company-section schedule-section">
+          <div class="section-label"><span>SCHEDULE</span><strong>近期日程</strong></div>
+          <div class="event-list">
+            {% for event in card.visible_events %}
+              <a class="event-row{% if event.overdue %} overdue{% endif %}" href="{{ event.url }}">
+                <i style="--event-color:{{ event.color }}"></i>
+                <time>{{ event.starts_at|date:'m/d H:i' }}</time>
+                <div>
+                  <strong>{{ event.title }}</strong>
+                  <span>
+                    {{ event.job_title }}
+                    {% if event.duration_minutes %} · {{ event.duration_minutes }}分钟{% elif event.all_day %} · 全天/截止{% endif %}
+                  </span>
+                </div>
+              </a>
+            {% empty %}
+              <div class="section-empty">暂无日程。</div>
+            {% endfor %}
+          </div>
+          {% if card.events|length > 3 %}
+            <details class="more-items">
+              <summary>查看其余 {{ card.events|length|add:'-3' }} 条</summary>
+              {% for event in card.events|slice:'3:' %}
+                <a class="event-row{% if event.overdue %} overdue{% endif %}" href="{{ event.url }}">
+                  <i style="--event-color:{{ event.color }}"></i>
+                  <time>{{ event.starts_at|date:'m/d H:i' }}</time>
+                  <div><strong>{{ event.title }}</strong></div>
+                </a>
+              {% endfor %}
+            </details>
+          {% endif %}
+        </section>
+
+        <section class="company-section todo-section">
+          <div class="section-label"><span>TO DO</span><strong>下一步行动</strong></div>
+          <div class="todo-mini-list">
+            {% for todo in card.visible_todos %}
+              {% include 'core/_todo_mini_row.html' with card_company_id=card.company.pk %}
+            {% empty %}
+              <div class="section-empty">暂无未完成 To Do。</div>
+            {% endfor %}
+          </div>
+          {% if card.todos|length > 5 %}
+            <a class="more-link" href="{% url 'core:todos' %}?company={{ card.company.pk }}">查看全部 {{ card.todos|length }} 条 →</a>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+  </details>
+</article>

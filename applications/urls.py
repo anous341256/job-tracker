@@ -10,6 +10,8 @@ urlpatterns = [
     path('<int:pk>/edit/', views.ApplicationUpdateView.as_view(), name='edit'),
     path('<int:pk>/status/', views.ApplicationStatusView.as_view(), name='status'),
     path('<int:pk>/archive/', views.ApplicationArchiveView.as_view(), name='archive'),
+    path('<int:pk>/delete/', views.ApplicationDeleteView.as_view(), name='delete'),
     path('<int:application_pk>/interviews/new/', views.InterviewCreateView.as_view(), name='interview-create'),
     path('interviews/<int:pk>/edit/', views.InterviewUpdateView.as_view(), name='interview-edit'),
+    path('interviews/<int:pk>/status/', views.InterviewStatusView.as_view(), name='interview-status'),
 ]

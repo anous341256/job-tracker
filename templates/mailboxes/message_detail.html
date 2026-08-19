@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <a href="{% url 'mailboxes:messages' %}" class="text-decoration-none">← 返回邮件列表</a>
+    <h1 class="mt-3 mb-2">{{ email.subject|default:'（无主题）' }}</h1>
+    <div class="text-muted">{{ email.received_at }}</div>
+  </div>
+  <div><a class="btn btn-primary" href="{% url 'ai_assistant:mail-assistant' %}?email={{ email.pk }}">用千问检查</a> <a class="btn btn-outline-primary" href="{% url 'mailboxes:link-message' email.pk %}">关联业务数据</a> <a class="btn btn-outline-danger" href="{% url 'mailboxes:message-delete' email.pk %}">删除数据库副本</a></div>
+</div>
+
+<div class="card mb-4"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap"><div><h2 class="h5 mb-1">AI 日程提取</h2><p class="text-muted mb-0">只会生成待审核建议，不会修改 Outlook 或直接写入日历。</p></div><form method="post" action="{% url 'mailboxes:analyze-schedule' email.pk %}">{% csrf_token %}<button class="btn btn-primary">AI 提取日程</button></form></div></div>
+
+<div class="card mb-4">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-2">发件人</dt><dd class="col-sm-10">{{ email.sender }}</dd>
+      <dt class="col-sm-2">收件人</dt><dd class="col-sm-10">{{ email.recipients|join:', ' }}</dd>
+      <dt class="col-sm-2">邮箱账户</dt><dd class="col-sm-10">{{ email.account.email_address }}</dd>
+      <dt class="col-sm-2">关联信息</dt>
+      <dd class="col-sm-10">
+        {% if email.company %}公司：{{ email.company }}{% endif %}
+        {% if email.application %} · 投递：{{ email.application }}{% endif %}
+        {% if email.contact %} · 联系人：{{ email.contact }}{% endif %}
+        {% if not email.company and not email.application and not email.contact %}尚未关联{% endif %}
+      </dd>
+    </dl>
+  </div>
+</div>
+
+<article class="card">
+  <div class="card-body">
+    <h2 class="h5 mb-3">邮件正文</h2>
+    <div class="mail-body">{{ email.body_text|default:'（无正文）'|linebreaksbr }}</div>
+  </div>
+</article>
+{% if email.has_attachments %}<section class="card mt-4"><div class="card-body"><h2 class="h5">附件</h2>{% if attachment_error %}<p class="text-danger">暂时无法读取 Outlook 附件：{{ attachment_error }}</p>{% endif %}{% for item in attachments %}<div class="d-flex justify-content-between align-items-center border-top py-2"><span>{{ item.name }} <small class="text-muted">{{ item.size|filesizeformat }}</small></span><form method="post" action="{% url 'mailboxes:attachment-import' email.pk item.index %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">导入资料库</button></form></div>{% empty %}{% if not attachment_error %}<p class="text-muted">没有可导入的附件。</p>{% endif %}{% endfor %}</div></section>{% endif %}
+{% endblock %}
